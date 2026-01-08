@@ -97,7 +97,7 @@ jobs:
       - name: Run tfcmt
         run: |
           cd environments/common
-          tfcmt plan -patch -- terragrunt plan --all --tf-path "$(pwd)/../../tfwrapper.sh"
+          tfcmt -log-level=debug plan -patch -- terragrunt plan --all --tf-path "$(pwd)/../../tfwrapper.sh"
         env:
           GITHUB_TOKEN: ${{ steps.create_token.outputs.token }}
           TG_LOG_DISABLE: true
