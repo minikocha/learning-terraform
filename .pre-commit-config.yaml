@@ -1,0 +1,22 @@
+default_stages: [pre-commit]
+repos:
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.104.0
+    hooks:
+      - id: terraform_docs
+        files: ^(modules|terraform)/.*
+        args:
+          - --args=--config=.terraform-docs.yaml
+      - id: terraform_fmt
+        files: ^(modules|terraform)/.*
+        args:
+          - --args=-diff
+          - --args=-write=true
+      #- id: terraform_tflint           # TODO:将来的にtflintを有効化する。
+      #  files: ^(modules|terraform)/.*
+      - id: terraform_validate
+        files: ^(modules|terraform)/.*
+      - id: terragrunt_fmt
+        files: ^(environments|overrides)/.*/terragrunt\.hcl
+      - id: terragrunt_validate
+        files: ^(environments|overrides)/.*/terragrunt\.hcl
