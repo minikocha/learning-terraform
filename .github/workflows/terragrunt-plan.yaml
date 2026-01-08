@@ -14,7 +14,7 @@ on:
 
 env:
   OWNER: "minikocha"
-  REPO: "learning-terraform "
+  REPO: "learning-terraform"
   PR_NUMBER: ${{ github.event.number }}
 
 jobs:
