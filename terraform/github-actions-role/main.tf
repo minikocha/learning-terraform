@@ -88,7 +88,7 @@ resource "awscc_iam_managed_policy" "github_actions_plan_policy" {
       {
         "Effect" = "Allow"
         "Action" = [
-          #"s3:GetBucket*",
+          "s3:GetBucket*",
           "s3:ListBucket*",
         ]
         "Resource" = "arn:aws:s3:::${var.backend_bucket_name}"
