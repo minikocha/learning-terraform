@@ -86,7 +86,7 @@ resource "awscc_iam_managed_policy" "github_actions_plan_policy" {
         "Action" = [
           "iam:List*",
           #"iam:Tag*",
-          #"iam:Untag*",
+          "iam:Untag*",
         ]
         "Resource" = "*"
       },
