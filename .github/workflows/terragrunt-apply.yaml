@@ -1,0 +1,127 @@
+name: terragrunt apply
+
+on:
+  pull_request: # TODO: `pull_request_target`を検証する
+    branches:
+      - develop
+    types:
+      - labeled
+    paths:
+      - ".github/workflows/terragrunt-plan.yaml"
+      - "environments/**"
+      - "modules/**"
+      - "terraform/**"
+
+jobs:
+  check-pr-approved:
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'applied') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      repository-projects: read
+    outputs:
+      is_pr_approved: ${{ steps.check-pr-approved.outputs.is_pr_approved }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 #v6.0.1
+
+      - name: Create GitHub App token
+        id: create_token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf #v2.2.1
+        with:
+          app-id: ${{ secrets.GH_APP_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            learning-terraform
+
+      - name: check pr is approved
+        id: check-pr-approved
+        run: |
+          set -ex
+          is_pr_approved=$(gh api /repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews | jq -r '.[].state' | grep -q "APPROVED" && echo "true" || echo "false")
+          echo "is_pr_approved=$is_pr_approved" >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: check result
+        run: echo "${{ steps.check-pr-approved.outputs.is_pr_approved }}"
+      - name: remove labels
+        if: ${{ steps.check-pr-approved.outputs.is_pr_approved == 'false' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr edit ${{github.event.pull_request.number}} --remove-label ${{ env.ENV }}-apply || true
+
+#  terragrunt-apply:
+#    if: ${{ contains(github.event.pull_request.labels.*.name, 'applied') }}
+#    runs-on: ubuntu-latest
+#    permissions:
+#      actions: read
+#      contents: write
+#      id-token: write # NOTE: OIDCプロバイダーでの認証に必須
+#      pull-requests: write
+#      repository-projects: read
+#    steps:
+#      - name: Checkout
+#        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 #v6.0.1
+#
+#      - name: Create GitHub App token
+#        id: create_token
+#        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf #v2.2.1
+#        with:
+#          app-id: ${{ secrets.GH_APP_APP_ID }}
+#          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+#          owner: ${{ github.repository_owner }}
+#          repositories: |
+#            learning-terraform
+#
+#      - name: Configure AWS Credentials With Assume Role
+#        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 #v5.1.1
+#        with:
+#          role-to-assume: ${{ secrets.LEARNING_TERRAFORM_PLAN_ROLE_ARN }}
+#          aws-region: ap-northeast-1
+#          role-session-name: GitHubActions
+#
+#      - name: Run mise install
+#        uses: jdx/mise-action@146a28175021df8ca24f8ee1828cc2a60f980bd5 #v3.5.1
+#
+#      - name: Install tfcmt
+#        uses: shmokmt/actions-setup-tfcmt@04d5aa6dc61eaa69a4d00257224c9b97f4857819 #v2.1.1
+#        with:
+#          version: v4.14.13
+#
+#      - name: Ready to run tfcmt
+#        run: |
+#          cat <<'_EOF_' >./tfwrapper.sh
+#          #!/bin/bash
+#          
+#          set -euo pipefail
+#          
+#          command=$1
+#          
+#          base_dir=$(git rev-parse --show-toplevel) # Please fix if necessary
+#          target=${PWD#"$base_dir"/}
+#          
+#          if [ "$command" == "plan" ]; then
+#            tfcmt -log-level=debug -var "target:${target}" plan -patch -- terraform "$@"
+#          elif [ "$command" == "apply" ]; then
+#            tfcmt -log-level=debug -var "target:${target}" apply -- terraform "$@"
+#          else
+#            terraform "$@"
+#          fi
+#          _EOF_
+#          chmod +x ./tfwrapper.sh
+#
+#      - name: Download plan files
+#        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 #v7.0.0
+#      - name: Run tfcmt
+#        run: |
+#          cd environments/common
+#          terragrunt run -a --tf-path "$(pwd)/../../tfwrapper.sh" -- plan -out ../../terragrunt.tfplan
+#        env:
+#          GITHUB_TOKEN: ${{ steps.create_token.outputs.token }} # NOTE: terraformも参照するため`TFCMT_GITHUB_TOKEN`でなくこちらを使用する
+#          TFCMT_REPO_OWNER: minikocha
+#          TFCMT_REPO_NAME: learning-terraform
+#          TFCMT_PR_NUMBER: ${{ github.event.number }}
+#          TG_LOG_DISABLE: true
