@@ -16,15 +16,11 @@ jobs:
     if: ${{ contains(github.event.pull_request.labels.*.name, 'applied') }}
     runs-on: ubuntu-latest
     permissions:
-      #contents: read
       pull-requests: write
       repository-projects: read
     outputs:
       is_pr_approved: ${{ steps.check-pr-approved.outputs.is_pr_approved }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 #v6.0.1
-
       - name: Create GitHub App token
         id: create_token
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf #v2.2.1
@@ -35,7 +31,7 @@ jobs:
           repositories: |
             learning-terraform
 
-      - name: check pr is approved
+      - name: Check PR is approved
         id: check-pr-approved
         run: |
           set -ex
@@ -43,9 +39,11 @@ jobs:
           echo "is_pr_approved=$is_pr_approved" >> "$GITHUB_OUTPUT"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: check result
+
+      - name: Check result
         run: echo "${{ steps.check-pr-approved.outputs.is_pr_approved }}"
-      - name: remove labels
+
+      - name: Remove label
         if: ${{ steps.check-pr-approved.outputs.is_pr_approved == 'false' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -54,19 +52,35 @@ jobs:
           gh pr comment ${{github.event.pull_request.number}} --body 'this PR was not approved, so `applied` label was removed.'
           exit 1
 
-#  terragrunt-apply:
-#    if: ${{ contains(github.event.pull_request.labels.*.name, 'applied') }}
-#    runs-on: ubuntu-latest
-#    permissions:
-#      actions: read
-#      contents: write
-#      id-token: write # NOTE: OIDCプロバイダーでの認証に必須
-#      pull-requests: write
-#      repository-projects: read
-#    steps:
-#      - name: Checkout
-#        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 #v6.0.1
-#
+  terragrunt-apply:
+    if: |
+      ${{ contains(github.event.pull_request.labels.*.name, 'applied') }}
+        && needs.check-pr-approved.outputs.is_pr_approved == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+      id-token: write # NOTE: OIDCプロバイダーでの認証に必須
+      pull-requests: write
+      repository-projects: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 #v6.0.1
+
+      - name: Download plan files
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 #v7.0.0
+        with:
+          name: ${{ github.event.pull_request.number }}.tfplan
+
+      - name: debug
+        run: |
+          ls -al
+
+          cd environments/common
+          ls -al ap-northeast-1/github-actions-role
+          ls -al ap-northeast-1/github-actions-role/.terragrunt-cache 
+
+
 #      - name: Create GitHub App token
 #        id: create_token
 #        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf #v2.2.1
@@ -126,3 +140,9 @@ jobs:
 #          TFCMT_REPO_NAME: learning-terraform
 #          TFCMT_PR_NUMBER: ${{ github.event.number }}
 #          TG_LOG_DISABLE: true
+#      - name: dismiss reviews
+#        if: failure()
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        run: |
+#          gh api /repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews | jq -r '.[] | select(.state == "APPROVED") | .id' | xargs -I {} gh api -X PUT /repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews/{}/dismissals -f "message=This PR's review has been dismissed because of apply error."
