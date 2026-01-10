@@ -53,6 +53,7 @@ jobs:
           exit 1
 
   terragrunt-apply:
+    needs: check-pr-approved
     if: |
       ${{ contains(github.event.pull_request.labels.*.name, 'applied') }}
         && needs.check-pr-approved.outputs.is_pr_approved == 'true'
