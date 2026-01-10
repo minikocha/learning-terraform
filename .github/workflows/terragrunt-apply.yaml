@@ -16,11 +16,15 @@ jobs:
     if: ${{ contains(github.event.pull_request.labels.*.name, 'applied') }}
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       pull-requests: write
       repository-projects: read
     outputs:
       is_pr_approved: ${{ steps.check-pr-approved.outputs.is_pr_approved }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 #v6.0.1
+
       - name: Create GitHub App token
         id: create_token
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf #v2.2.1
