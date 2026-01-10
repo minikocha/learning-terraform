@@ -7,7 +7,6 @@ on:
     types:
       - labeled
     paths:
-      - ".github/workflows/terragrunt-plan.yaml"
       - "environments/**"
       - "modules/**"
       - "terraform/**"
@@ -17,7 +16,7 @@ jobs:
     if: ${{ contains(github.event.pull_request.labels.*.name, 'applied') }}
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      #contents: read
       pull-requests: write
       repository-projects: read
     outputs:
@@ -51,7 +50,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh pr edit ${{github.event.pull_request.number}} --remove-label ${{ env.ENV }}-apply || true
+          gh pr edit ${{github.event.pull_request.number}} --remove-label applied
+          gh pr comment ${{github.event.pull_request.number}} --body 'this PR was not approved, so `applied` label was removed.'
+          exit 1
 
 #  terragrunt-apply:
 #    if: ${{ contains(github.event.pull_request.labels.*.name, 'applied') }}
