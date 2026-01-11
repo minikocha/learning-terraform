@@ -102,7 +102,7 @@ jobs:
       - name: debug
         run: |
           pwd
-          ls -R
+          ls -aR
 
 #      - name: Create GitHub App token
 #        id: create_token
