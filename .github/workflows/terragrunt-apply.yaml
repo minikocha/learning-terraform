@@ -64,16 +64,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 #v6.0.1
 
-      - name: Create GitHub App token
-        id: create_token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf #v2.2.1
-        with:
-          app-id: ${{ secrets.GH_APP_APP_ID }}
-          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-          repositories: |
-            learning-terraform
-
       - name: check run-id
         id: check-run-id
         run: |
@@ -100,75 +90,78 @@ jobs:
           github-token: ${{ steps.create_token.outputs.token }}
           run-id: ${{ steps.check-run-id.outputs.run_id }}
 
+      - name: Create GitHub App token
+        id: create_token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf #v2.2.1
+        with:
+          app-id: ${{ secrets.GH_APP_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            learning-terraform
 
-      - name: debug
+      - name: Configure AWS Credentials With Assume Role
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 #v5.1.1
+        with:
+          role-to-assume: ${{ secrets.LEARNING_TERRAFORM_APPLY_ROLE_ARN }}
+          aws-region: ap-northeast-1
+          role-session-name: GitHubActions
+
+      - name: Run mise install
+        uses: jdx/mise-action@146a28175021df8ca24f8ee1828cc2a60f980bd5 #v3.5.1
+
+      - name: Install tfcmt
+        uses: shmokmt/actions-setup-tfcmt@04d5aa6dc61eaa69a4d00257224c9b97f4857819 #v2.1.1
+        with:
+          version: v4.14.13
+
+      - name: Ready to run tfcmt
+        run: |
+          cat <<'_EOF_' >./tfwrapper.sh
+          #!/bin/bash
+          
+          set -euo pipefail
+          
+          command=$1
+          
+          base_dir=$(git rev-parse --show-toplevel) # Please fix if necessary
+          target=${PWD#"$base_dir"/}
+          
+          if [ "$command" == "plan" ]; then
+            tfcmt -log-level=debug -var "target:${target}" plan -patch -- terraform "$@"
+          elif [ "$command" == "apply" ]; then
+            tfcmt -log-level=debug -var "target:${target}" apply -- terraform "$@"
+          else
+            terraform "$@"
+          fi
+          _EOF_
+          chmod +x ./tfwrapper.sh
+
+      - name: Run tfcmt
         run: |
           cp -r /tmp/artifact/* ./environments/common/
-          pwd
-          ls -aR
+          cd environments/common
+          #terragrunt run -a --tf-path "$(pwd)/../../tfwrapper.sh" -- apply ../../terragrunt.tfplan
+          exit 1
+        env:
+          GITHUB_TOKEN: ${{ steps.create_token.outputs.token }} # NOTE: terraformも参照するため`TFCMT_GITHUB_TOKEN`でなくこちらを使用する
+          TFCMT_REPO_OWNER: minikocha
+          TFCMT_REPO_NAME: learning-terraform
+          TFCMT_PR_NUMBER: ${{ github.event.number }}
+          TG_LOG_DISABLE: true
 
-#      - name: Create GitHub App token
-#        id: create_token
-#        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf #v2.2.1
-#        with:
-#          app-id: ${{ secrets.GH_APP_APP_ID }}
-#          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
-#          owner: ${{ github.repository_owner }}
-#          repositories: |
-#            learning-terraform
-#
-#      - name: Configure AWS Credentials With Assume Role
-#        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 #v5.1.1
-#        with:
-#          role-to-assume: ${{ secrets.LEARNING_TERRAFORM_APPLY_ROLE_ARN }}
-#          aws-region: ap-northeast-1
-#          role-session-name: GitHubActions
-#
-#      - name: Run mise install
-#        uses: jdx/mise-action@146a28175021df8ca24f8ee1828cc2a60f980bd5 #v3.5.1
-#
-#      - name: Install tfcmt
-#        uses: shmokmt/actions-setup-tfcmt@04d5aa6dc61eaa69a4d00257224c9b97f4857819 #v2.1.1
-#        with:
-#          version: v4.14.13
-#
-#      - name: Ready to run tfcmt
-#        run: |
-#          cat <<'_EOF_' >./tfwrapper.sh
-#          #!/bin/bash
-#          
-#          set -euo pipefail
-#          
-#          command=$1
-#          
-#          base_dir=$(git rev-parse --show-toplevel) # Please fix if necessary
-#          target=${PWD#"$base_dir"/}
-#          
-#          if [ "$command" == "plan" ]; then
-#            tfcmt -log-level=debug -var "target:${target}" plan -patch -- terraform "$@"
-#          elif [ "$command" == "apply" ]; then
-#            tfcmt -log-level=debug -var "target:${target}" apply -- terraform "$@"
-#          else
-#            terraform "$@"
-#          fi
-#          _EOF_
-#          chmod +x ./tfwrapper.sh
-#
-#      - name: Download plan files
-#        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 #v7.0.0
-#      - name: Run tfcmt
-#        run: |
-#          cd environments/common
-#          terragrunt run -a --tf-path "$(pwd)/../../tfwrapper.sh" -- apply ../../terragrunt.tfplan
-#        env:
-#          GITHUB_TOKEN: ${{ steps.create_token.outputs.token }} # NOTE: terraformも参照するため`TFCMT_GITHUB_TOKEN`でなくこちらを使用する
-#          TFCMT_REPO_OWNER: minikocha
-#          TFCMT_REPO_NAME: learning-terraform
-#          TFCMT_PR_NUMBER: ${{ github.event.number }}
-#          TG_LOG_DISABLE: true
-#      - name: dismiss reviews
-#        if: failure()
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        run: |
-#          gh api /repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews | jq -r '.[] | select(.state == "APPROVED") | .id' | xargs -I {} gh api -X PUT /repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews/{}/dismissals -f "message=This PR's review has been dismissed because of apply error."
+       #- name: あ
+       #  if: success()
+       #  run: |
+       #    echo "マージする"
+       #  env:
+       #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: dismiss reviews
+        if: failure()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh pr edit ${{github.event.pull_request.number}} --remove-label applied --repo "${{ github.repository }}"
+          gh pr review ${{github.event.pull_request.number}} --request-changes --body "deploy failed"
