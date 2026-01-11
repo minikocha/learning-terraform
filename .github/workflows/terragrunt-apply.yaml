@@ -51,7 +51,7 @@ jobs:
   terragrunt-apply:
     needs: check-pr-approved
     if: |
-      contains(github.event.pull_request.labels.*.name, 'applied')
+      github.event.label.name == 'applied'
         && needs.check-pr-approved.outputs.is_pr_approved == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -89,8 +89,8 @@ jobs:
           details_url="$(gh pr view ${{ github.event.pull_request.number }} \
               --repo "${{ github.repository }}" \
               --json statusCheckRollup \
-            | jq -r '[.statusCheckRollup | sort_by(.completedAt) | .[] | select(.name == "terragrunt-plan")] | .[-1] | if .completedAt != "" then .detailsUrl end')"
-          if [[ "${details_url}" == "null" ]]; then
+            | jq -r '[.statusCheckRollup | sort_by(.completedAt) | .[] | select(.name == "terragrunt-plan" and .completedAt != null and .completedAt != "")] | .[-1] | .detailsUrl')"
+          if [[ "${details_url}" == "" ]]; then
             echo "execution result of terragrunt-plan job was not found" >&2
             exit 1
           fi
