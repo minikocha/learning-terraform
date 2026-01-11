@@ -22,44 +22,36 @@ jobs:
     outputs:
       is_pr_approved: ${{ steps.check-pr-approved.outputs.is_pr_approved }}
     steps:
-      - name: Checkout # NOTE: ghコマンドを実行するのに必要
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 #v6.0.1
-
-      - name: Create GitHub App token
-        id: create_token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf #v2.2.1
-        with:
-          app-id: ${{ secrets.GH_APP_APP_ID }}
-          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-          repositories: |
-            learning-terraform
-
       - name: Check PR is approved
         id: check-pr-approved
         run: |
-          set -ex
-          is_pr_approved=$(gh api /repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews | jq -r '.[].state' | grep -q "APPROVED" && echo "true" || echo "false")
-          echo "is_pr_approved=$is_pr_approved" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          review_decision="$(gh pr view ${{ github.event.pull_request.number }} --repo "${{ github.repository }}" --json reviewDecision | jq -r .reviewDecision)"
+          if [[ "${review_decision}" == "APPROVED" ]]; then
+            echo "is_pr_approved=true" >>$GITHUB_OUTPUT
+          else
+            echo "is_pr_approved=false" >>$GITHUB_OUTPUT
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check result
         run: echo "${{ steps.check-pr-approved.outputs.is_pr_approved }}"
 
-      - name: Remove label
+      - name: Remove label and exit with error
         if: ${{ steps.check-pr-approved.outputs.is_pr_approved == 'false' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh pr edit ${{github.event.pull_request.number}} --remove-label applied
-          gh pr comment ${{github.event.pull_request.number}} --body 'this PR was not approved, so `applied` label was removed.'
+          set -euo pipefail
+          gh pr edit ${{github.event.pull_request.number}} --remove-label applied --repo "${{ github.repository }}"
+          gh pr comment ${{github.event.pull_request.number}} --body 'this PR was not approved, so `applied` label was removed.' --repo "${{ github.repository }}"
           exit 1
 
   terragrunt-apply:
     needs: check-pr-approved
     if: |
-      ${{ contains(github.event.pull_request.labels.*.name, 'applied') }}
+      contains(github.event.pull_request.labels.*.name, 'applied')
         && needs.check-pr-approved.outputs.is_pr_approved == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -82,19 +74,34 @@ jobs:
           repositories: |
             learning-terraform
 
+      - name: check run-id
+        id: check-run-id
+        run: |
+          set -euo pipefail
+          
+          details_url="$(gh pr view ${{ github.event.pull_request.number }} \
+              --repo "${{ github.repository }}" \
+              --json statusCheckRollup \
+            | jq -r '[.statusCheckRollup | sort_by(.completedAt) | .[] | select(.name == "terragrunt-plan")] | .[-1] | if .completedAt != "" then .detailsUrl end')"
+          if [[ "${details_url}" == "null" ]]; then
+            echo "execution result of terragrunt-plan job was not found" >&2
+            exit 1
+          fi
+          
+          echo "job_id=${details_url##*/}" >>$GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Download plan files
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 #v7.0.0
         with:
           github-token: ${{ steps.create_token.outputs.token }}
           name: ${{ github.event.pull_request.number }}.tfplan
+          run-id: ${{ steps.check-run-id.outputs.job_id }}
 
       - name: debug
         run: |
-          ls -al
-          
-          cd environments/common
-          ls -al ap-northeast-1/github-actions-role
-          ls -al ap-northeast-1/github-actions-role/.terragrunt-cache 
+          ls -R
 
 #      - name: Create GitHub App token
 #        id: create_token
