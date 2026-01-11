@@ -22,13 +22,6 @@ jobs:
     outputs:
       is_pr_approved: ${{ steps.check-pr-approved.outputs.is_pr_approved }}
     steps:
-      - name: debug
-        run: |
-          set -euo pipefail
-          gh pr review 2 -a
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Check PR is approved
         id: check-pr-approved
         run: |
