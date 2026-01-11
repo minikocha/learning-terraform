@@ -22,6 +22,13 @@ jobs:
     outputs:
       is_pr_approved: ${{ steps.check-pr-approved.outputs.is_pr_approved }}
     steps:
+      - name: debug
+        run: |
+          set -euo pipefail
+          gh pr review 2 -a
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Check PR is approved
         id: check-pr-approved
         run: |
@@ -150,17 +157,18 @@ jobs:
           TFCMT_PR_NUMBER: ${{ github.event.number }}
           TG_LOG_DISABLE: true
 
-       #- name: あ
-       #  if: success()
-       #  run: |
-       #    echo "マージする"
-       #  env:
-       #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: merge
+        if: success()
+        run: |
+          set -euo pipefail
+          gh pr merge ${{github.event.pull_request.number}} -b "deploy success" -d -m --repo "${{ github.repository }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: dismiss reviews
         if: failure()
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.create_token.outputs.token }}
         run: |
           set -euo pipefail
           gh pr edit ${{github.event.pull_request.number}} --remove-label applied --repo "${{ github.repository }}"
