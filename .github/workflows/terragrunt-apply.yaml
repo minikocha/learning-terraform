@@ -22,7 +22,7 @@ jobs:
     outputs:
       is_pr_approved: ${{ steps.check-pr-approved.outputs.is_pr_approved }}
     steps:
-      - name: Checkout
+      - name: Checkout # NOTE: ghコマンドを実行するのに必要
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 #v6.0.1
 
       - name: Create GitHub App token
@@ -72,19 +72,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 #v6.0.1
 
+      - name: Create GitHub App token
+        id: create_token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf #v2.2.1
+        with:
+          app-id: ${{ secrets.GH_APP_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            learning-terraform
+
       - name: Download plan files
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 #v7.0.0
         with:
+          github-token: ${{ steps.create_token.outputs.token }}
           name: ${{ github.event.pull_request.number }}.tfplan
 
       - name: debug
         run: |
           ls -al
-
+          
           cd environments/common
           ls -al ap-northeast-1/github-actions-role
           ls -al ap-northeast-1/github-actions-role/.terragrunt-cache 
-
 
 #      - name: Create GitHub App token
 #        id: create_token
@@ -99,7 +109,7 @@ jobs:
 #      - name: Configure AWS Credentials With Assume Role
 #        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 #v5.1.1
 #        with:
-#          role-to-assume: ${{ secrets.LEARNING_TERRAFORM_PLAN_ROLE_ARN }}
+#          role-to-assume: ${{ secrets.LEARNING_TERRAFORM_APPLY_ROLE_ARN }}
 #          aws-region: ap-northeast-1
 #          role-session-name: GitHubActions
 #
@@ -138,7 +148,7 @@ jobs:
 #      - name: Run tfcmt
 #        run: |
 #          cd environments/common
-#          terragrunt run -a --tf-path "$(pwd)/../../tfwrapper.sh" -- plan -out ../../terragrunt.tfplan
+#          terragrunt run -a --tf-path "$(pwd)/../../tfwrapper.sh" -- apply ../../terragrunt.tfplan
 #        env:
 #          GITHUB_TOKEN: ${{ steps.create_token.outputs.token }} # NOTE: terraformも参照するため`TFCMT_GITHUB_TOKEN`でなくこちらを使用する
 #          TFCMT_REPO_OWNER: minikocha
