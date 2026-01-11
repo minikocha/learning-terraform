@@ -95,12 +95,15 @@ jobs:
       - name: Download plan files
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 #v7.0.0
         with:
-          github-token: ${{ steps.create_token.outputs.token }}
           name: ${{ github.event.pull_request.number }}.tfplan
+          path: /tmp/artifact
+          github-token: ${{ steps.create_token.outputs.token }}
           run-id: ${{ steps.check-run-id.outputs.run_id }}
+
 
       - name: debug
         run: |
+          cp -r /tmp/artifact/* ./environments/common/
           pwd
           ls -aR
 
