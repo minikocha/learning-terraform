@@ -141,8 +141,7 @@ jobs:
         run: |
           cp -r /tmp/artifact/* ./environments/common/
           cd environments/common
-          #terragrunt run -a --tf-path "$(pwd)/../../tfwrapper.sh" -- apply ../../terragrunt.tfplan
-          exit 1
+          terragrunt run -a --tf-path "$(pwd)/../../tfwrapper.sh" -- apply ../../terragrunt.tfplan
         env:
           GITHUB_TOKEN: ${{ steps.create_token.outputs.token }} # NOTE: terraformも参照するため`TFCMT_GITHUB_TOKEN`でなくこちらを使用する
           TFCMT_REPO_OWNER: minikocha
