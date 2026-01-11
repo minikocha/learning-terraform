@@ -64,6 +64,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 #v6.0.1
 
+      - name: Create GitHub App token
+        id: create_token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf #v2.2.1
+        with:
+          app-id: ${{ secrets.GH_APP_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            learning-terraform
+
+      - name: Configure AWS Credentials With Assume Role
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 #v5.1.1
+        with:
+          role-to-assume: ${{ secrets.LEARNING_TERRAFORM_APPLY_ROLE_ARN }}
+          aws-region: ap-northeast-1
+          role-session-name: GitHubActions
+
       - name: check run-id
         id: check-run-id
         run: |
@@ -89,23 +106,6 @@ jobs:
           path: /tmp/artifact
           github-token: ${{ steps.create_token.outputs.token }}
           run-id: ${{ steps.check-run-id.outputs.run_id }}
-
-      - name: Create GitHub App token
-        id: create_token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf #v2.2.1
-        with:
-          app-id: ${{ secrets.GH_APP_APP_ID }}
-          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-          repositories: |
-            learning-terraform
-
-      - name: Configure AWS Credentials With Assume Role
-        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 #v5.1.1
-        with:
-          role-to-assume: ${{ secrets.LEARNING_TERRAFORM_APPLY_ROLE_ARN }}
-          aws-region: ap-northeast-1
-          role-session-name: GitHubActions
 
       - name: Run mise install
         uses: jdx/mise-action@146a28175021df8ca24f8ee1828cc2a60f980bd5 #v3.5.1
