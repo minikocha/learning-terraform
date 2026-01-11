@@ -88,7 +88,7 @@ jobs:
             exit 1
           fi
           
-          echo "job_id=${details_url##*/}" >>$GITHUB_OUTPUT
+          echo "run_id=$(echo "${details_url}" | awk -F '/' '{ print $8 }')" >>$GITHUB_OUTPUT
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -97,7 +97,7 @@ jobs:
         with:
           github-token: ${{ steps.create_token.outputs.token }}
           name: ${{ github.event.pull_request.number }}.tfplan
-          run-id: ${{ steps.check-run-id.outputs.job_id }}
+          run-id: ${{ steps.check-run-id.outputs.run_id }}
 
       - name: debug
         run: |
