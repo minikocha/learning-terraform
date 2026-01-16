@@ -1,0 +1,50 @@
+name: develop-branch-plan
+
+on:
+  pull_request:
+    branches:
+      - develop
+    types:
+      - opened
+      - synchronize
+
+jobs:
+  pre-check:
+    uses: minikocha/learning-terraform/.github/workflows/pre-check.yaml@develop
+    permissions: # NOTE: 呼び出し先に必要な権限を呼び出し元も持っている必要がある
+      contents: read
+      id-token: write # NOTE: OIDCプロバイダーでの認証に必須
+    secrets:
+      LEARNING_TERRAFORM_PLAN_ROLE_ARN: ${{ secrets.LEARNING_TERRAFORM_PLAN_ROLE_ARN }}
+
+  plan-on-common:
+    needs: pre-check
+    uses: minikocha/learning-terraform/.github/workflows/terragrunt-plan.yaml@develop
+    with:
+      DEPLOYMENT_TARGET: common
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    secrets:
+      GH_APP_APP_ID: ${{ secrets.GH_APP_APP_ID }}
+      GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
+      LEARNING_TERRAFORM_PLAN_ROLE_ARN: ${{ secrets.LEARNING_TERRAFORM_PLAN_ROLE_ARN }}
+    permissions:
+      actions: write
+      contents: read
+      id-token: write # NOTE: OIDCプロバイダーでの認証に必須
+      pull-requests: write
+
+#  plan-on-develop:
+#    needs: plan-on-common
+#    uses: minikocha/learning-terraform/.github/workflows/terragrunt-plan.yaml@develop
+#    with:
+#      DEPLOYMENT_TARGET: develop
+#      PR_NUMBER: ${{ github.event.pull_request.number }}
+#    secrets:
+#      GH_APP_APP_ID: ${{ secrets.GH_APP_APP_ID }}
+#      GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
+#      LEARNING_TERRAFORM_PLAN_ROLE_ARN: ${{ secrets.LEARNING_TERRAFORM_PLAN_ROLE_ARN }}
+#    permissions:
+#      actions: write
+#      contents: read
+#      id-token: write # NOTE: OIDCプロバイダーでの認証に必須
+#      pull-requests: write
