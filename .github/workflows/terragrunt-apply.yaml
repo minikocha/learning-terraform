@@ -176,20 +176,3 @@ jobs:
             git remote set-url origin https://actions-user:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
             git push origin ${GITHUB_HEAD_REF}
           fi
-
-      - name: Merge PR
-        if: success()
-        run: |
-          gh pr merge ${{ inputs.PR_NUMBER }} -b '`terragrunt apply` was successful, so this PR has been merged.' -d -m -R "${{ github.repository }}"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Request change
-        if: failure()
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
-        run: |
-          set -euo pipefail
-          
-          gh pr edit ${{ inputs.PR_NUMBER }} --remove-label applied -R "${{ github.repository }}"
-          gh pr review ${{ inputs.PR_NUMBER }} -r -b '`terragrunt apply` was failed, please fix this PR.' -R "${{ github.repository }}"

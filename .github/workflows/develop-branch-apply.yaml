@@ -56,15 +56,15 @@ jobs:
       #repository-projects: read
     steps:
       - name: Merge PR
-        if: success()
+        if: !contains(needs.*.result, 'failure')
         run: |
           #gh pr merge ${{ github.event.pull_request.number }} -b '`terragrunt apply` was successful, so this PR has been merged.' -d -m -R "${{ github.repository }}"
-          echo "success"
+          exit 1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Request change
-        if: failure()
+        if: contains(needs.*.result, 'failure') || failure()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
         run: |
