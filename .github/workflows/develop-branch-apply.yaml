@@ -58,8 +58,7 @@ jobs:
       - name: Merge PR
         if: ${{ !contains(needs.*.result, 'failure') }}
         run: |
-          #gh pr merge ${{ github.event.pull_request.number }} -b '`terragrunt apply` was successful, so this PR has been merged.' -d -m -R "${{ github.repository }}"
-          exit 1
+          gh pr merge ${{ github.event.pull_request.number }} -b '`terragrunt apply` was successful, so this PR has been merged.' -d -m -R "${{ github.repository }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
