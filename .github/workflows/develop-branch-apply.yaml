@@ -1,0 +1,72 @@
+name: develop-branch-apply
+
+on:
+  pull_request:
+    branches:
+      - develop
+    types:
+      - labeled
+
+jobs:
+  apply-on-common:
+    permissions:
+      actions: read
+      contents: write
+      id-token: write # NOTE: OIDCプロバイダーでの認証に必須
+      pull-requests: write
+      repository-projects: read
+    if: ${{ github.event.label.name == 'applied' }}
+    uses: minikocha/learning-terraform/.github/workflows/terragrunt-apply.yaml@develop
+    with:
+      DEPLOYMENT_TARGET: common
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    secrets:
+      GH_APP_APP_ID: ${{ secrets.GH_APP_APP_ID }}
+      GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
+      LEARNING_TERRAFORM_APPLY_ROLE_ARN: ${{ secrets.LEARNING_TERRAFORM_APPLY_ROLE_ARN }}
+
+#  dapply-on-develop:
+#    permissions:
+#      actions: read
+#      contents: write
+#      id-token: write # NOTE: OIDCプロバイダーでの認証に必須
+#      pull-requests: write
+#      repository-projects: read
+#    needs: apply-on-common
+#    if: ${{ github.event.label.name == 'applied' }}
+#    uses: minikocha/learning-terraform/.github/workflows/terragrunt-apply.yaml@develop
+#    with:
+#      DEPLOYMENT_TARGET: develop
+#      PR_NUMBER: ${{ github.event.pull_request.number }}
+#    secrets:
+#      GH_APP_APP_ID: ${{ secrets.GH_APP_APP_ID }}
+#      GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
+#      LEARNING_TERRAFORM_APPLY_ROLE_ARN: ${{ secrets.LEARNING_TERRAFORM_APPLY_ROLE_ARN }}
+
+  judge:
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    needs:
+      - apply-on-common
+      #- dapply-on-develop
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge PR
+        if: ${{ !contains(needs.*.result, 'failure') }}
+        run: |
+          gh pr merge ${{ github.event.pull_request.number }} -b '`terragrunt apply` was successful, so this PR has been merged.' -d -m -R "${{ github.repository }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Request change
+        if: ${{ contains(needs.*.result, 'failure') || failure() }}
+        run: |
+          set -euo pipefail
+          
+          gh pr edit ${{ github.event.pull_request.number }} --remove-label applied -R "${{ github.repository }}"
+          gh pr review ${{ github.event.pull_request.number }} -r -b '`terragrunt apply` was failed, please fix this PR.' -R "${{ github.repository }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

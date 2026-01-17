@@ -1,0 +1,178 @@
+name: terragrunt apply
+
+on:
+  workflow_call:
+    inputs:
+      DEPLOYMENT_TARGET:
+        type: string
+        required: true
+      PR_NUMBER:
+        type: number
+        required: true
+    secrets:
+      GH_APP_APP_ID:
+        required: true
+      GH_APP_PRIVATE_KEY:
+        required: true
+      LEARNING_TERRAFORM_APPLY_ROLE_ARN:
+        required: true
+
+jobs:
+  check-pr-approved:
+    permissions:
+      contents: read
+      pull-requests: write
+      repository-projects: read
+    if: ${{ github.event.label.name == 'applied' }}
+    runs-on: ubuntu-latest
+    outputs:
+      is_pr_approved: ${{ steps.check-pr-approved.outputs.is_pr_approved }}
+    steps:
+      - name: Check PR is approved
+        id: check-pr-approved
+        run: |
+          set -euo pipefail
+
+          review_decision="$(gh pr view ${{ inputs.PR_NUMBER }} -R "${{ github.repository }}" --json reviewDecision | jq -r .reviewDecision)"
+          if [[ "${review_decision}" == "APPROVED" ]]; then
+            echo "is_pr_approved=true" >>"$GITHUB_OUTPUT"
+          else
+            echo "is_pr_approved=false" >>"$GITHUB_OUTPUT"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check result
+        run: echo "${{ steps.check-pr-approved.outputs.is_pr_approved }}"
+
+      - name: Remove label and exit with error
+        if: ${{ steps.check-pr-approved.outputs.is_pr_approved == 'false' }}
+        run: |
+          set -euo pipefail
+
+          gh pr edit ${{ inputs.PR_NUMBER }} --remove-label applied -R "${{ github.repository }}"
+          gh pr comment ${{ inputs.PR_NUMBER }} -b 'This PR has not been approved, so the `applied` label has been removed.' -R "${{ github.repository }}"
+          exit 1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  terragrunt-apply:
+    permissions:
+      actions: read
+      contents: write
+      id-token: write # NOTE: OIDCプロバイダーでの認証に必須
+      pull-requests: write
+      repository-projects: read
+    needs: check-pr-approved
+    if: ${{ github.event.label.name == 'applied' && needs.check-pr-approved.outputs.is_pr_approved == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Create GitHub App token
+        id: create-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf #v2.2.1
+        with:
+          app-id: ${{ secrets.GH_APP_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: learning-terraform
+
+      - name: Assume role
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 #v5.1.1
+        with:
+          role-to-assume: ${{ secrets.LEARNING_TERRAFORM_APPLY_ROLE_ARN }}
+          aws-region: ap-northeast-1
+          role-session-name: GitHubActions
+
+      - name: Check run-id
+        id: check-run-id
+        run: |
+          set -euo pipefail
+          
+          details_url="$(gh pr view ${{ inputs.PR_NUMBER }} -R "${{ github.repository }}" --json statusCheckRollup \
+            | jq -r '[.statusCheckRollup | sort_by(.completedAt) | .[] | select(.name == "plan-on-${{ inputs.DEPLOYMENT_TARGET }} / terragrunt-plan" and .completedAt != null and .completedAt != "")] | .[-1] | .detailsUrl')"
+          if [[ "${details_url}" == "" || "${details_url}" == "null" ]]; then
+            echo 'execution result of `plan-on-${{ inputs.DEPLOYMENT_TARGET }} / terragrunt-plan` job was not found' >&2
+            exit 1
+          fi
+          echo "run_id=$(echo "${details_url}" | awk -F '/' '{ print $8 }')" >>"$GITHUB_OUTPUT"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download plan files
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 #v7.0.0
+        with:
+          name: ${{ inputs.PR_NUMBER }}-${{ inputs.DEPLOYMENT_TARGET }}-tfplan
+          path: /tmp/artifact
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ steps.check-run-id.outputs.run_id }}
+
+      - name: Install tools
+        uses: jdx/mise-action@146a28175021df8ca24f8ee1828cc2a60f980bd5 #v3.5.1
+
+      - name: Init all units
+        run: |
+          terragrunt run -a --no-color -- init -upgrade
+        working-directory: environments/${{ inputs.DEPLOYMENT_TARGET }}
+
+      - name: Install tfcmt
+        uses: shmokmt/actions-setup-tfcmt@04d5aa6dc61eaa69a4d00257224c9b97f4857819 #v2.1.1
+        with:
+          version: v4.14.13
+
+      - name: Set tfwrapper.sh
+        run: |
+          cat <<'_EOF_' >./tfwrapper.sh
+          #!/bin/bash
+          
+          set -euo pipefail
+          
+          command=$1
+          
+          base_dir=$(git rev-parse --show-toplevel) # Please fix if necessary
+          target=${PWD#"$base_dir"/}
+          
+          if [ "$command" == "plan" ]; then
+            tfcmt -log-level=debug -var "target:${target}" plan -patch -- terraform "$@"
+          elif [ "$command" == "apply" ]; then
+            tfcmt -log-level=debug -var "target:${target}" apply -- terraform "$@"
+          else
+            terraform "$@"
+          fi
+          _EOF_
+          chmod +x ./tfwrapper.sh
+
+      - name: Run terragrunt apply
+        run: |
+          cp -r /tmp/artifact/* .
+          terragrunt run -a --no-color --non-interactive -- apply -auto-approve -input=false -no-color ../../tfplan
+        working-directory: environments/${{ inputs.DEPLOYMENT_TARGET }}
+        env:
+          GITHUB_TOKEN: ${{ steps.create-token.outputs.token }}
+          TFCMT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TFCMT_REPO_OWNER: minikocha
+          TFCMT_REPO_NAME: learning-terraform
+          TFCMT_PR_NUMBER: ${{ inputs.PR_NUMBER }}
+          TG_LOG_DISABLE: true
+          TG_TF_PATH: ${{ github.workspace }}/tfwrapper.sh
+
+      - name: Commit .terraform.lock.hcl
+        run: |
+          set -euo pipefail
+          
+          git config --global user.name "actions-user"
+          git config --global user.email "action@github.com"
+          
+          git fetch origin ${GITHUB_HEAD_REF}
+          git switch ${GITHUB_HEAD_REF}
+          differences=$(git status -s environments/${{ inputs.DEPLOYMENT_TARGET }}/**/.terraform.lock.hcl | wc -l)
+          if [[ $differences -ne 0 ]]; then
+            git add environments/${{ inputs.DEPLOYMENT_TARGET }}/**/.terraform.lock.hcl
+            git commit -m "update by github actions"
+            git remote set-url origin https://actions-user:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
+            git push origin ${GITHUB_HEAD_REF}
+          fi

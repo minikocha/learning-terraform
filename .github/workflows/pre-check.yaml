@@ -1,0 +1,61 @@
+name: pre-check
+
+on:
+  workflow_call:
+    secrets:
+      LEARNING_TERRAFORM_PLAN_ROLE_ARN:
+        required: true
+
+jobs:
+  pre-check:
+    permissions:
+      contents: read
+      id-token: write # NOTE: OIDCプロバイダーでの認証に必須
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Assume role
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 #v5.1.1
+        with:
+          role-to-assume: ${{ secrets.LEARNING_TERRAFORM_PLAN_ROLE_ARN }}
+          aws-region: ap-northeast-1
+          role-session-name: GitHubActions
+
+      - name: Install tools
+        uses: jdx/mise-action@146a28175021df8ca24f8ee1828cc2a60f980bd5 #v3.5.1
+
+      - name: Init all units
+        run: terragrunt run -a --no-color -- init -upgrade
+
+      - name: Validate all units
+        run: terragrunt run -a --no-color -- validate
+
+      - name: Format all units
+        run: terragrunt run -a --no-color -- fmt -check -recursive
+
+      - name: Validate terragrunt configuration
+        run: terragrunt hcl validate --no-color
+
+      - name: Format terragrunt configuration
+        run: terragrunt hcl fmt --check --no-color
+
+      - name: Init, validate, format terraform modules
+        run: |
+          set -euo pipefail
+          
+          for path in $(ls modules); do
+            [[ ! -d "modules/${path}" ]] && continue
+            [[ ! -f "modules/${path}/main.tf" ]] && continue
+          
+            cd "modules/${path}" \
+              && terraform init -no-color \
+              && terraform validate -no-color \
+              && terraform fmt -check -no-color \
+              && cd -
+          done
+        env:
+          TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.terraform-plugin-cache
