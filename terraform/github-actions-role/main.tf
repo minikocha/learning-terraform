@@ -75,7 +75,7 @@ resource "awscc_iam_managed_policy" "github_actions_plan_policy" {
           #"cloudformation:CreateResource",
           #"cloudformation:DeleteResource",
           "cloudformation:GetResource",
-          #"cloudformation:GetResourceRequestStatus",
+          "cloudformation:GetResourceRequestStatus",
           #"cloudformation:UpdateResource",
         ]
         "Resource" = "arn:aws:cloudformation:*:${data.aws_caller_identity.current.account_id}:resource/*"
