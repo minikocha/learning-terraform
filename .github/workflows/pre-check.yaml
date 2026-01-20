@@ -64,5 +64,6 @@ jobs:
         run: |
           set -euo pipefail
           
+          tflint --init
           tflint -c $(git rev-parse --show-toplevel)/.tflint.hcl --recursive --chdir ./modules
           tflint -c $(git rev-parse --show-toplevel)/.tflint.hcl --recursive --chdir ./terraform
