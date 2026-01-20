@@ -52,7 +52,8 @@ jobs:
 
       - name: Init all units
         run: |
-          terragrunt run -a --no-color -- init -upgrade
+          terragrunt run -a --no-color -- init \
+            || terragrunt run -a --no-color -- init -upgrade
         working-directory: environments/${{ inputs.DEPLOYMENT_TARGET }}
 
       - name: Install tfcmt
@@ -69,8 +70,10 @@ jobs:
           
           command=$1
           
-          base_dir=$(git rev-parse --show-toplevel) # Please fix if necessary
-          target=${PWD#"$base_dir"/}
+          # NOTE: escaping `.terragrunt-cache` directory
+          cd ../../../ \
+            && target="$(basename ${PWD})" \
+            && cd - >/dev/null
           
           if [ "$command" == "plan" ]; then
             tfcmt -log-level=debug -var "target:${target}" plan -patch -- terraform "$@"

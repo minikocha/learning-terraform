@@ -59,3 +59,10 @@ jobs:
           done
         env:
           TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.terraform-plugin-cache
+
+      - name: Lint terraform files
+        run: |
+          set -euo pipefail
+          
+          tflint -c $(git rev-parse --show-toplevel)/.tflint.hcl --recursive --chdir ./modules
+          tflint -c $(git rev-parse --show-toplevel)/.tflint.hcl --recursive --chdir ./terraform
