@@ -14,7 +14,7 @@ resource "awscc_s3_bucket" "state_store" {
   lifecycle_configuration = {
     rules = [
       {
-        abort_incomplete_multipart_upload = { days_after_initiation = 1 }
+        abort_incomplete_multipart_upload = { days_after_initiation = 7 }
         status                            = "Enabled"
       },
     ]
