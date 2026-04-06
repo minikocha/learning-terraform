@@ -1,0 +1,40 @@
+name: develop-branch-plan
+
+on:
+  pull_request:
+    branches:
+      - develop
+    types:
+      - opened
+      - synchronize
+    paths:
+      - ".github/workflows/terragrunt-plan.yaml"
+      - "modules/**"
+      - "units/**"
+
+jobs:
+  pre-check:
+    permissions: # NOTE: 呼び出し先に必要な権限を呼び出し元も持っている必要がある
+      contents: read
+      id-token: write # NOTE: OIDCプロバイダーでの認証に必須
+    uses: minikocha/learning-terraform/.github/workflows/pre-check.yaml@develop
+    with:
+      DEPLOYMENT_TARGET: develop
+    secrets:
+      LEARNING_PLAN_ROLE_ARN: ${{ secrets.LEARNING_PLAN_ROLE_ARN }}
+
+  terragrunt-plan:
+    permissions:
+      actions: write
+      contents: read
+      id-token: write # NOTE: OIDCプロバイダーでの認証に必須
+      pull-requests: write
+    needs: pre-check
+    uses: minikocha/learning-terraform/.github/workflows/terragrunt-plan.yaml@develop
+    with:
+      DEPLOYMENT_TARGET: develop
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    secrets:
+      GH_APP_APP_ID: ${{ secrets.GH_APP_APP_ID }}
+      GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
+      LEARNING_PLAN_ROLE_ARN: ${{ secrets.LEARNING_PLAN_ROLE_ARN }}
