@@ -1,0 +1,108 @@
+name: terragrunt plan
+
+on:
+  workflow_call:
+    inputs:
+      DEPLOYMENT_TARGET:
+        type: string
+        required: true
+      PR_NUMBER:
+        type: number
+        required: true
+    secrets:
+      GH_APP_APP_ID:
+        required: true
+      GH_APP_PRIVATE_KEY:
+        required: true
+      LEARNING_PLAN_ROLE_ARN:
+        required: true
+
+jobs:
+  terragrunt-plan:
+    permissions:
+      actions: write
+      contents: read
+      id-token: write # NOTE: OIDCプロバイダーでの認証に必須
+      pull-requests: write
+    runs-on: ubuntu-latest
+    environment: develop # TODO: ...
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Create GitHub App token
+        id: create-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf #v2.2.1
+        with:
+          app-id: ${{ secrets.GH_APP_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: learning-terraform
+
+      - name: Assume role
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 #v5.1.1
+        with:
+          role-to-assume: ${{ secrets.LEARNING_PLAN_ROLE_ARN }}
+          aws-region: ap-northeast-1
+          role-session-name: GitHubActions
+
+      - name: Install tools
+        uses: jdx/mise-action@146a28175021df8ca24f8ee1828cc2a60f980bd5 #v3.5.1
+
+      - name: Init all units
+        run: |
+          terragrunt run -a --no-color -- init \
+            || terragrunt run -a --no-color -- init -upgrade
+        working-directory: units/${{ inputs.DEPLOYMENT_TARGET }}
+
+      - name: Install tfcmt
+        uses: shmokmt/actions-setup-tfcmt@04d5aa6dc61eaa69a4d00257224c9b97f4857819 #v2.1.1
+        with:
+          version: v4.14.13
+
+      - name: Set tfwrapper.sh
+        run: |
+          cat <<'_EOF_' >./tfwrapper.sh
+          #!/bin/bash
+          
+          set -euo pipefail
+          
+          command=$1
+          
+          # NOTE: escaping `.terragrunt-cache` directory
+          cd ../../../ \
+            && target="$(basename "${PWD}")" \
+            && cd - >/dev/null
+          
+          if [ "$command" == "plan" ]; then
+            tfcmt -log-level=debug -var "target:${target}" plan -patch -- terraform "$@"
+          elif [ "$command" == "apply" ]; then
+            tfcmt -log-level=debug -var "target:${target}" apply -- terraform "$@"
+          else
+            terraform "$@"
+          fi
+          _EOF_
+          chmod +x ./tfwrapper.sh
+
+      - name: Run terragrunt plan
+        run: |
+          terragrunt run -a --no-color -- plan -out ../../tfplan
+        working-directory: units/${{ inputs.DEPLOYMENT_TARGET }}
+        env:
+          GITHUB_TOKEN: ${{ steps.create-token.outputs.token }}
+          TFCMT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TFCMT_REPO_OWNER: minikocha
+          TFCMT_REPO_NAME: learning-terraform
+          TFCMT_PR_NUMBER: ${{ inputs.PR_NUMBER }}
+          TG_LOG_DISABLE: true
+          TG_TF_PATH: ${{ github.workspace }}/tfwrapper.sh
+
+      - name: Save all plan files
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f #v6.0.0
+        with:
+          include-hidden-files: true
+          name: ${{ inputs.PR_NUMBER }}-${{ inputs.DEPLOYMENT_TARGET }}-tfplan
+          overwrite: true
+          path: units/${{ inputs.DEPLOYMENT_TARGET }}/**/.terragrunt-cache/tfplan
