@@ -30,6 +30,10 @@ resource "awscc_ec2_vpc_gateway_attachment" "this" {
   vpc_id              = awscc_ec2_vpc.this.vpc_id
 }
 
+resource "awscc_ec2_egress_only_internet_gateway" "this" {
+  vpc_id = awscc_ec2_vpc.this.vpc_id
+}
+
 resource "awscc_ec2_vpc_cidr_block" "ipv6" {
   amazon_provided_ipv_6_cidr_block = true
   vpc_id                           = awscc_ec2_vpc.this.vpc_id
@@ -71,7 +75,7 @@ resource "awscc_ec2_subnet" "public_1" {
   assign_ipv_6_address_on_creation = true
   availability_zone                = data.aws_availability_zones.available.names[0]
   cidr_block                       = cidrsubnet(awscc_ec2_vpc.this.cidr_block, 6, 0)
-  enable_dns_64                    = true
+  enable_dns_64                    = false # NOTE: 有効にする場合はNATゲートウェイを追加ののち、`64:ff9b::/96`をNATゲートウェイにルーティングする。
   ipv_6_cidr_block                 = cidrsubnet(awscc_ec2_vpc_cidr_block.ipv6.ipv_6_cidr_block, 8, 0)
   tags                             = concat(var.tags, [{ key = "Name", value = "${var.project}-${var.environment}-${var.short_region_code}-public-1" }])
   vpc_id                           = awscc_ec2_vpc.this.vpc_id
@@ -87,7 +91,7 @@ resource "awscc_ec2_subnet" "public_2" {
   assign_ipv_6_address_on_creation = true
   availability_zone                = data.aws_availability_zones.available.names[1]
   cidr_block                       = cidrsubnet(awscc_ec2_vpc.this.cidr_block, 6, 1)
-  enable_dns_64                    = true
+  enable_dns_64                    = false # NOTE: 有効にする場合はNATゲートウェイを追加ののち、`64:ff9b::/96`をNATゲートウェイにルーティングする。
   ipv_6_cidr_block                 = cidrsubnet(awscc_ec2_vpc_cidr_block.ipv6.ipv_6_cidr_block, 8, 1)
   tags                             = concat(var.tags, [{ key = "Name", value = "${var.project}-${var.environment}-${var.short_region_code}-public-2" }])
   vpc_id                           = awscc_ec2_vpc.this.vpc_id
@@ -128,12 +132,16 @@ resource "awscc_ec2_subnet_route_table_association" "public_2" {
 }
 
 resource "awscc_ec2_route" "public_to_internet" {
+  depends_on = [awscc_ec2_vpc_gateway_attachment.this, ]
+
   destination_cidr_block = "0.0.0.0/0"
   gateway_id             = awscc_ec2_internet_gateway.this.internet_gateway_id
   route_table_id         = awscc_ec2_route_table.public.route_table_id
 }
 
 resource "awscc_ec2_route" "ipv6_public_to_internet" {
+  depends_on = [awscc_ec2_vpc_gateway_attachment.this, ]
+
   destination_ipv_6_cidr_block = "::/0"
   gateway_id                   = awscc_ec2_internet_gateway.this.internet_gateway_id
   route_table_id               = awscc_ec2_route_table.public.route_table_id
@@ -149,7 +157,7 @@ resource "awscc_ec2_subnet" "private_1" {
   assign_ipv_6_address_on_creation = true
   availability_zone                = data.aws_availability_zones.available.names[0]
   cidr_block                       = cidrsubnet(awscc_ec2_vpc.this.cidr_block, 6, 4)
-  enable_dns_64                    = true
+  enable_dns_64                    = false # NOTE: 有効にする場合はNATゲートウェイを追加ののち、`64:ff9b::/96`をNATゲートウェイにルーティングする。
   ipv_6_cidr_block                 = cidrsubnet(awscc_ec2_vpc_cidr_block.ipv6.ipv_6_cidr_block, 8, 16)
   tags                             = concat(var.tags, [{ key = "Name", value = "${var.project}-${var.environment}-${var.short_region_code}-private-1" }])
   vpc_id                           = awscc_ec2_vpc.this.vpc_id
@@ -165,7 +173,7 @@ resource "awscc_ec2_subnet" "private_2" {
   assign_ipv_6_address_on_creation = true
   availability_zone                = data.aws_availability_zones.available.names[1]
   cidr_block                       = cidrsubnet(awscc_ec2_vpc.this.cidr_block, 6, 5)
-  enable_dns_64                    = true
+  enable_dns_64                    = false # NOTE: 有効にする場合はNATゲートウェイを追加ののち、`64:ff9b::/96`をNATゲートウェイにルーティングする。
   ipv_6_cidr_block                 = cidrsubnet(awscc_ec2_vpc_cidr_block.ipv6.ipv_6_cidr_block, 8, 17)
   tags                             = concat(var.tags, [{ key = "Name", value = "${var.project}-${var.environment}-${var.short_region_code}-private-2" }])
   vpc_id                           = awscc_ec2_vpc.this.vpc_id
@@ -205,10 +213,10 @@ resource "awscc_ec2_subnet_route_table_association" "private_2" {
   subnet_id      = awscc_ec2_subnet.private_2.subnet_id
 }
 
-resource "awscc_ec2_route" "private_to_internet" {
-  destination_ipv_6_cidr_block = "::/0"
-  gateway_id                   = awscc_ec2_internet_gateway.this.internet_gateway_id
-  route_table_id               = awscc_ec2_route_table.private.route_table_id
+resource "awscc_ec2_route" "ipv6_private_to_internet" {
+  destination_ipv_6_cidr_block    = "::/0"
+  egress_only_internet_gateway_id = awscc_ec2_egress_only_internet_gateway.this.egress_only_internet_gateway_id
+  route_table_id                  = awscc_ec2_route_table.private.route_table_id
 }
 
 # ----------------------------------------------------------------------------------------------------
@@ -221,7 +229,7 @@ resource "awscc_ec2_subnet" "protected_1" {
   assign_ipv_6_address_on_creation = true
   availability_zone                = data.aws_availability_zones.available.names[0]
   cidr_block                       = cidrsubnet(awscc_ec2_vpc.this.cidr_block, 6, 8)
-  enable_dns_64                    = true
+  enable_dns_64                    = false # NOTE: 有効にする場合はNATゲートウェイを追加ののち、`64:ff9b::/96`をNATゲートウェイにルーティングする。
   ipv_6_cidr_block                 = cidrsubnet(awscc_ec2_vpc_cidr_block.ipv6.ipv_6_cidr_block, 8, 32)
   tags                             = concat(var.tags, [{ key = "Name", value = "${var.project}-${var.environment}-${var.short_region_code}-protected-1" }])
   vpc_id                           = awscc_ec2_vpc.this.vpc_id
@@ -237,7 +245,7 @@ resource "awscc_ec2_subnet" "protected_2" {
   assign_ipv_6_address_on_creation = true
   availability_zone                = data.aws_availability_zones.available.names[1]
   cidr_block                       = cidrsubnet(awscc_ec2_vpc.this.cidr_block, 6, 9)
-  enable_dns_64                    = true
+  enable_dns_64                    = false # NOTE: 有効にする場合はNATゲートウェイを追加ののち、`64:ff9b::/96`をNATゲートウェイにルーティングする。
   ipv_6_cidr_block                 = cidrsubnet(awscc_ec2_vpc_cidr_block.ipv6.ipv_6_cidr_block, 8, 33)
   tags                             = concat(var.tags, [{ key = "Name", value = "${var.project}-${var.environment}-${var.short_region_code}-protected-2" }])
   vpc_id                           = awscc_ec2_vpc.this.vpc_id
