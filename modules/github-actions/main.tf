@@ -104,7 +104,7 @@ resource "awscc_iam_managed_policy" "github_actions_plan" {
           "s3:DeleteObject",
           "s3:PutObject",
         ]
-        "Resource" = "arn:aws:s3:::${awscc_s3_bucket.state_store.bucket_name}/*/terraform.tfstate"
+        "Resource" = "arn:aws:s3:::${awscc_s3_bucket.state_store.bucket_name}/*/terraform.tfstate*" # NOTE: ロック取得時に作成するファイル名は`terraform.tfstate.tflock`
       },
       # --- cloudformation
       # NOTE: awsccプロバイダーを使用する場合は必須    
@@ -114,6 +114,23 @@ resource "awscc_iam_managed_policy" "github_actions_plan" {
           "cloudformation:GetResource",
         ]
         "Resource" = "arn:aws:cloudformation:*:${data.aws_caller_identity.current.account_id}:resource/*"
+      },
+      # --- ec2
+      {
+        "Effect" = "Allow"
+        "Action" = [
+          "ec2:Describe*",
+        ]
+        "Resource" = "*"
+      },
+      # --- elasticache
+      {
+        "Effect" = "Allow"
+        "Action" = [
+          "elasticache:DescribeCacheSubnetGroups",
+          "elasticache:ListTagsForResource",
+        ]
+        "Resource" = "arn:aws:elasticache:*:${data.aws_caller_identity.current.account_id}:subnetgroup:*"
       },
       # --- iam
       {
@@ -150,6 +167,21 @@ resource "awscc_iam_managed_policy" "github_actions_plan" {
           "iam:GetPolicy*",
         ]
         "Resource" = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/*"
+      },
+      # --- rds
+      {
+        "Effect" = "Allow"
+        "Action" = [
+          "rds:ListTagsForResource",
+        ]
+        "Resource" = "arn:aws:rds:*:${data.aws_caller_identity.current.account_id}:*:*"
+      },
+      {
+        "Effect" = "Allow"
+        "Action" = [
+          "rds:DescribeDBSubnetGroups",
+        ]
+        "Resource" = "arn:aws:rds:*:${data.aws_caller_identity.current.account_id}:subgrp:*"
       },
       # --- s3
       {
@@ -228,7 +260,7 @@ resource "awscc_iam_managed_policy" "github_actions_apply" {
           "s3:DeleteObject",
           "s3:PutObject",
         ]
-        "Resource" = "arn:aws:s3:::${awscc_s3_bucket.state_store.bucket_name}/*/terraform.tfstate"
+        "Resource" = "arn:aws:s3:::${awscc_s3_bucket.state_store.bucket_name}/*/terraform.tfstate*" # NOTE: ロック取得時に作成するファイル名は`terraform.tfstate.tflock`
       },
       # --- cloudformation
       # NOTE: awsccプロバイダーを使用する場合は必須    
@@ -242,6 +274,162 @@ resource "awscc_iam_managed_policy" "github_actions_apply" {
           "cloudformation:UpdateResource",
         ]
         "Resource" = "arn:aws:cloudformation:*:${data.aws_caller_identity.current.account_id}:resource/*"
+      },
+      # --- ec2
+      {
+        "Effect" = "Allow"
+        "Action" = [
+          "ec2:Describe*", # plan
+        ]
+        "Resource" = "*"
+      },
+      {
+        "Effect" = "Allow"
+        "Action" = [
+          "ec2:CreateTags",
+          "ec2:DeleteTags",
+        ]
+        "Resource" = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:*/*"
+      },
+      {
+        "Effect" = "Allow"
+        "Action" = [
+          "ec2:AssociateDhcpOptions",
+          "ec2:CreateDhcpOptions",
+          "ec2:DeleteDhcpOptions",
+        ]
+        "Resource" = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:dhcp-options/*"
+      },
+      {
+        "Effect" = "Allow"
+        "Action" = [
+          "ec2:AssociateRouteTable",
+          "ec2:AttachInternetGateway",
+          "ec2:CreateInternetGateway",
+          "ec2:DeleteInternetGateway",
+          "ec2:DisassociateRouteTable",
+          "ec2:DetachInternetGateway",
+          "ec2:ReplaceRouteTableAssociation",
+        ]
+        "Resource" = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:internet-gateway/*"
+      },
+      {
+        "Effect" = "Allow"
+        "Action" = [
+          "ec2:AssociateSubnetCidrBlock",
+          "ec2:CreateSubnet",
+        ]
+        "Resource" = "arn:aws:ec2::${data.aws_caller_identity.current.account_id}:ipam-pool/*"
+      },
+      {
+        "Effect" = "Allow"
+        "Action" = [
+          "ec2:CreateNetworkAcl",
+          "ec2:CreateNetworkAclEntry",
+          "ec2:DeleteNetworkAcl",
+          "ec2:DeleteNetworkAclEntry",
+          "ec2:ReplaceNetworkAclAssociation",
+          "ec2:ReplaceNetworkAclEntry",
+        ]
+        "Resource" = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:network-acl/*"
+      },
+      {
+        "Effect" = "Allow"
+        "Action" = [
+          "ec2:AssociateRouteTable",
+          "ec2:CreateRoute",
+          "ec2:CreateRouteTable",
+          "ec2:DeleteRoute",
+          "ec2:DeleteRouteTable",
+          "ec2:ReplaceRoute",
+          "ec2:DisassociateRouteTable",
+          "ec2:ReplaceRouteTableAssociation",
+          "ec2:CreateVpcEndpoint",
+          "ec2:ModifyVpcEndpoint",
+        ]
+        "Resource" = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:route-table/*"
+      },
+      {
+        "Effect" = "Allow"
+        "Action" = [
+          "ec2:CreateVpcEndpoint",
+          "ec2:ModifyVpcEndpoint",
+        ]
+        "Resource" = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:security-group/*"
+      },
+      {
+        "Effect" = "Allow"
+        "Action" = [
+          "ec2:AssociateRouteTable",
+          "ec2:AssociateSubnetCidrBlock",
+          "ec2:CreateSubnet",
+          "ec2:CreateVpcEndpoint",
+          "ec2:DeleteSubnet",
+          "ec2:DisassociateRouteTable",
+          "ec2:DisassociateSubnetCidrBlock",
+          "ec2:ModifySubnetAttribute",
+          "ec2:ModifyVpcEndpoint",
+          "ec2:ReplaceNetworkAclAssociation",
+          "ec2:ReplaceRouteTableAssociation",
+        ]
+        "Resource" = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:subnet/*"
+      },
+      {
+        "Effect" = "Allow"
+        "Action" = [
+          "ec2:CreateFlowLogs",
+          "ec2:DeleteFlowLogs",
+        ]
+        "Resource" = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:vpc-flow-log/*"
+      },
+      {
+        "Effect" = "Allow"
+        "Action" = [
+          "ec2:AssociateDhcpOptions",
+          "ec2:AssociateVpcCidrBlock",
+          "ec2:AttachInternetGateway",
+          "ec2:CreateFlowLogs",
+          "ec2:CreateNetworkAcl",
+          "ec2:CreateRouteTable",
+          "ec2:CreateSubnet",
+          "ec2:CreateVpc",
+          "ec2:CreateVpcEndpoint",
+          "ec2:DeleteVpc",
+          "ec2:DetachInternetGateway",
+          "ec2:DisassociateVpcCidrBlock",
+          "ec2:ModifyVpcAttribute",
+          "ec2:ModifyVpcTenancy",
+        ]
+        "Resource" = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:vpc/*"
+      },
+      {
+        "Effect" = "Allow"
+        "Action" = [
+          "ec2:CreateVpcEndpoint",
+          "ec2:DeleteVpcEndpoints",
+          "ec2:ModifyVpcEndpoint",
+        ]
+        "Resource" = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:vpc-endpoint/*"
+      },
+      # --- elasticache
+      {
+        "Effect" = "Allow"
+        "Action" = [
+          "elasticache:AddTagsToResource",
+          "elasticache:RemoveTagsFromResource",
+        ]
+        "Resource" = "arn:aws:elasticache:*:${data.aws_caller_identity.current.account_id}:*:*"
+      },
+      {
+        "Effect" = "Allow"
+        "Action" = [
+          "elasticache:CreateCacheSubnetGroup",
+          "elasticache:DeleteCacheSubnetGroup",
+          "elasticache:DescribeCacheSubnetGroups",
+          "elasticache:ListTagsForResource",
+          "elasticache:ModifyCacheSubnetGroup",
+        ]
+        "Resource" = "arn:aws:elasticache:*:${data.aws_caller_identity.current.account_id}:subnetgroup:*"
       },
       # --- iam
       {
@@ -300,6 +488,35 @@ resource "awscc_iam_managed_policy" "github_actions_apply" {
         ]
         "Resource" = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/*"
       },
+      # --- logs
+      {
+        "Effect" = "Allow"
+        "Action" = [
+          "logs:CreateLogDelivery",
+          "logs:DeleteLogDelivery",
+        ]
+        "Resource" = "*"
+      },
+      # --- rds
+      {
+        "Effect" = "Allow"
+        "Action" = [
+          "rds:AddTagsToResource",
+          "rds:ListTagsForResource",
+          "rds:RemoveTagsFromResource",
+        ]
+        "Resource" = "arn:aws:rds:*:${data.aws_caller_identity.current.account_id}:*:*"
+      },
+      {
+        "Effect" = "Allow"
+        "Action" = [
+          "rds:CreateDBSubnetGroup",
+          "rds:DeleteDBSubnetGroup",
+          "rds:DescribeDBSubnetGroups",
+          "rds:ModifyDBSubnetGroup",
+        ]
+        "Resource" = "arn:aws:rds:*:${data.aws_caller_identity.current.account_id}:subgrp:*"
+      },
       # --- s3
       {
         "Effect" = "Allow"
@@ -323,6 +540,17 @@ resource "awscc_iam_managed_policy" "github_actions_apply" {
           "s3:UntagResource",
         ]
         "Resource" = "arn:aws:s3:::*"
+      },
+      # --- vpce
+      {
+        "Effect" = "Allow"
+        "Action" = [
+          "vpce:AllowMultiRegion",
+        ]
+        "Resource" = [
+          "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:vpc-endpoint/*",
+          "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:vpc-endpoint-service/*",
+        ]
       },
     ]
   })

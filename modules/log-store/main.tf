@@ -46,6 +46,35 @@ resource "awscc_s3_bucket_policy" "log_store" {
           }
         }
       },
+      {
+        "Effect"    = "Allow"
+        "Principal" = { "Service" = "delivery.logs.amazonaws.com" }
+        "Action"    = "s3:GetBucketAcl"
+        "Resource"  = awscc_s3_bucket.log_store.arn
+        "Condition" = {
+          "StringEquals" = {
+            "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+          }
+          "ArnLike" = {
+            "aws:SourceArn" = "arn:aws:logs:*:${data.aws_caller_identity.current.account_id}:*"
+          }
+        }
+      },
+      {
+        "Effect"    = "Allow"
+        "Principal" = { "Service" = "delivery.logs.amazonaws.com" }
+        "Action"    = "s3:PutObject"
+        "Resource"  = "${awscc_s3_bucket.log_store.arn}/vpc/*"
+        "Condition" = {
+          "StringEquals" = {
+            "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+            "s3:x-amz-acl"      = "bucket-owner-full-control"
+          }
+          "ArnLike" = {
+            "aws:SourceArn" = "arn:aws:logs:*:${data.aws_caller_identity.current.account_id}:*"
+          }
+        }
+      },
     ]
   })
 }
