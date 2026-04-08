@@ -303,6 +303,14 @@ resource "awscc_iam_managed_policy" "github_actions_apply" {
       {
         "Effect" = "Allow"
         "Action" = [
+          "ec2:CreateEgressOnlyInternetGateway",
+          "ec2:DeleteEgressOnlyInternetGateway",
+        ]
+        "Resource" = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:egress-only-internet-gateway/*"
+      },
+      {
+        "Effect" = "Allow"
+        "Action" = [
           "ec2:AssociateRouteTable",
           "ec2:AttachInternetGateway",
           "ec2:CreateInternetGateway",
@@ -388,6 +396,7 @@ resource "awscc_iam_managed_policy" "github_actions_apply" {
           "ec2:AssociateDhcpOptions",
           "ec2:AssociateVpcCidrBlock",
           "ec2:AttachInternetGateway",
+          "ec2:CreateEgressOnlyInternetGateway",
           "ec2:CreateFlowLogs",
           "ec2:CreateNetworkAcl",
           "ec2:CreateRouteTable",
