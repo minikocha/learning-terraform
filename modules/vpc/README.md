@@ -33,12 +33,15 @@ No modules.
 | <a name="output_private_subnet_cidr_blocks"></a> [private\_subnet\_cidr\_blocks](#output\_private\_subnet\_cidr\_blocks) | n/a |
 | <a name="output_private_subnet_ids"></a> [private\_subnet\_ids](#output\_private\_subnet\_ids) | n/a |
 | <a name="output_private_subnet_ipv6_cidr_blocks"></a> [private\_subnet\_ipv6\_cidr\_blocks](#output\_private\_subnet\_ipv6\_cidr\_blocks) | n/a |
+| <a name="output_private_subnet_route_table_id"></a> [private\_subnet\_route\_table\_id](#output\_private\_subnet\_route\_table\_id) | n/a |
 | <a name="output_protected_subnet_cidr_blocks"></a> [protected\_subnet\_cidr\_blocks](#output\_protected\_subnet\_cidr\_blocks) | n/a |
 | <a name="output_protected_subnet_ids"></a> [protected\_subnet\_ids](#output\_protected\_subnet\_ids) | n/a |
 | <a name="output_protected_subnet_ipv6_cidr_blocks"></a> [protected\_subnet\_ipv6\_cidr\_blocks](#output\_protected\_subnet\_ipv6\_cidr\_blocks) | n/a |
+| <a name="output_protected_subnet_route_table_id"></a> [protected\_subnet\_route\_table\_id](#output\_protected\_subnet\_route\_table\_id) | n/a |
 | <a name="output_public_subnet_cidr_blocks"></a> [public\_subnet\_cidr\_blocks](#output\_public\_subnet\_cidr\_blocks) | n/a |
 | <a name="output_public_subnet_ids"></a> [public\_subnet\_ids](#output\_public\_subnet\_ids) | n/a |
 | <a name="output_public_subnet_ipv6_cidr_blocks"></a> [public\_subnet\_ipv6\_cidr\_blocks](#output\_public\_subnet\_ipv6\_cidr\_blocks) | n/a |
+| <a name="output_public_subnet_route_table_id"></a> [public\_subnet\_route\_table\_id](#output\_public\_subnet\_route\_table\_id) | n/a |
 | <a name="output_rds_db_subnet_group_name"></a> [rds\_db\_subnet\_group\_name](#output\_rds\_db\_subnet\_group\_name) | n/a |
 | <a name="output_vpc_cidr_block"></a> [vpc\_cidr\_block](#output\_vpc\_cidr\_block) | n/a |
 | <a name="output_vpc_id"></a> [vpc\_id](#output\_vpc\_id) | n/a |

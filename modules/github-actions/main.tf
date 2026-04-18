@@ -311,6 +311,20 @@ resource "awscc_iam_managed_policy" "github_actions_apply" {
       {
         "Effect" = "Allow"
         "Action" = [
+          "ec2:AcceptAddressTransfer",
+          "ec2:AllocateAddress",
+          "ec2:AssociateAddress",
+          "ec2:AssociateNatGatewayAddress",
+          "ec2:CreateNatGateway",
+          "ec2:DisassociateAddress",
+          "ec2:DisassociateNatGatewayAddress",
+          "ec2:ReleaseAddress",
+        ]
+        "Resource" = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:elastic-ip/*"
+      },
+      {
+        "Effect" = "Allow"
+        "Action" = [
           "ec2:AssociateRouteTable",
           "ec2:AttachInternetGateway",
           "ec2:CreateInternetGateway",
@@ -332,6 +346,16 @@ resource "awscc_iam_managed_policy" "github_actions_apply" {
       {
         "Effect" = "Allow"
         "Action" = [
+          "ec2:AssociateNatGatewayAddress",
+          "ec2:CreateNatGateway",
+          "ec2:DeleteNatGateway",
+          "ec2:DisassociateNatGatewayAddress",
+        ]
+        "Resource" = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:natgateway/*"
+      },
+      {
+        "Effect" = "Allow"
+        "Action" = [
           "ec2:CreateNetworkAcl",
           "ec2:CreateNetworkAclEntry",
           "ec2:DeleteNetworkAcl",
@@ -340,6 +364,15 @@ resource "awscc_iam_managed_policy" "github_actions_apply" {
           "ec2:ReplaceNetworkAclEntry",
         ]
         "Resource" = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:network-acl/*"
+      },
+      {
+        "Effect" = "Allow"
+        "Action" = [
+          "ec2:AssociateAddress",
+          "ec2:DisassociateAddress",
+          "ec2:DisassociateNatGatewayAddress",
+        ]
+        "Resource" = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:network-interface/*"
       },
       {
         "Effect" = "Allow"
@@ -370,6 +403,7 @@ resource "awscc_iam_managed_policy" "github_actions_apply" {
         "Action" = [
           "ec2:AssociateRouteTable",
           "ec2:AssociateSubnetCidrBlock",
+          "ec2:CreateNatGateway",
           "ec2:CreateSubnet",
           "ec2:CreateVpcEndpoint",
           "ec2:DeleteSubnet",

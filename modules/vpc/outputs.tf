@@ -31,6 +31,10 @@ output "public_subnet_ids" {
   ]
 }
 
+output "public_subnet_route_table_id" {
+  value = awscc_ec2_route_table.public.route_table_id
+}
+
 output "private_subnet_cidr_blocks" {
   value = [
     awscc_ec2_subnet.private_1.cidr_block,
@@ -52,6 +56,10 @@ output "private_subnet_ids" {
   ]
 }
 
+output "private_subnet_route_table_id" {
+  value = awscc_ec2_route_table.private.route_table_id
+}
+
 output "protected_subnet_cidr_blocks" {
   value = [
     awscc_ec2_subnet.protected_1.cidr_block,
@@ -71,6 +79,10 @@ output "protected_subnet_ids" {
     awscc_ec2_subnet.protected_1.subnet_id,
     awscc_ec2_subnet.protected_2.subnet_id,
   ]
+}
+
+output "protected_subnet_route_table_id" {
+  value = awscc_ec2_route_table.protected.route_table_id
 }
 
 output "elasticache_subnet_group_name" {
