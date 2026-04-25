@@ -1,5 +1,3 @@
-data "aws_caller_identity" "current" {}
-
 data "tls_certificate" "github_actions" {
   url = "https://token.actions.githubusercontent.com"
 }
@@ -76,136 +74,6 @@ resource "awscc_iam_role" "github_actions_plan" {
   tags                 = var.tags
 }
 
-resource "awscc_iam_managed_policy" "github_actions_plan" {
-  managed_policy_name = "${var.project}-${var.environment}-github-actions-plan"
-  policy_document = jsonencode({
-    "Version" = "2012-10-17"
-    "Statement" = [
-      # NOTE: リソースを作成するリージョンとグローバルサービス（CloudFront、IAM、Route 53、etc...）のためのus-east-1以外のリージョンは全て禁止
-      {
-        "Effect"   = "Deny"
-        "Action"   = "*"
-        "Resource" = "*"
-        "Condition" = {
-          "StringNotEquals" = {
-            "aws:RequestedRegion" = [
-              "ap-northeast-1",
-              "ap-northeast-3",
-              "us-east-1",
-            ]
-          }
-        }
-      },
-      # NOTE: tfstateの参照・更新に必要な権限
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "s3:GetObject",
-          "s3:DeleteObject",
-          "s3:PutObject",
-        ]
-        "Resource" = "arn:aws:s3:::${awscc_s3_bucket.state_store.bucket_name}/*/terraform.tfstate*" # NOTE: ロック取得時に作成するファイル名は`terraform.tfstate.tflock`
-      },
-      # --- cloudformation
-      # NOTE: awsccプロバイダーを使用する場合は必須    
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "cloudformation:GetResource",
-        ]
-        "Resource" = "arn:aws:cloudformation:*:${data.aws_caller_identity.current.account_id}:resource/*"
-      },
-      # --- ec2
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "ec2:Describe*",
-        ]
-        "Resource" = "*"
-      },
-      # --- elasticache
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "elasticache:DescribeCacheSubnetGroups",
-          "elasticache:ListTagsForResource",
-        ]
-        "Resource" = "arn:aws:elasticache:*:${data.aws_caller_identity.current.account_id}:subnetgroup:*"
-      },
-      # --- iam
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "iam:List*",
-        ]
-        "Resource" = "*"
-      },
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "iam:GetRole",
-        ]
-        "Resource" = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/*"
-      },
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "iam:GetInstanceProfile",
-        ]
-        "Resource" = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:instance-profile/*"
-      },
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "iam:GetOpenIDConnectProvider",
-        ]
-        "Resource" = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/*"
-      },
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "iam:GetPolicy*",
-        ]
-        "Resource" = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/*"
-      },
-      # --- rds
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "rds:ListTagsForResource",
-        ]
-        "Resource" = "arn:aws:rds:*:${data.aws_caller_identity.current.account_id}:*:*"
-      },
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "rds:DescribeDBSubnetGroups",
-        ]
-        "Resource" = "arn:aws:rds:*:${data.aws_caller_identity.current.account_id}:subgrp:*"
-      },
-      # --- s3
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "s3:ListAllMyBuckets",
-        ]
-        "Resource" = "*"
-      },
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "s3:GetBucket*",
-          "s3:Get*Configuration",
-          "s3:ListBucket*",
-          "s3:ListTagsForResource",
-        ]
-        "Resource" = "arn:aws:s3:::*"
-      },
-    ]
-  })
-  roles = [awscc_iam_role.github_actions_plan.role_name, ]
-}
-
 resource "awscc_iam_role" "github_actions_apply" {
   assume_role_policy_document = jsonencode({
     "Statement" = [
@@ -232,338 +100,169 @@ resource "awscc_iam_role" "github_actions_apply" {
   tags                 = var.tags
 }
 
-resource "awscc_iam_managed_policy" "github_actions_apply" {
-  managed_policy_name = "${var.project}-${var.environment}-github-actions-apply"
-  policy_document = jsonencode({
-    "Version" = "2012-10-17"
-    "Statement" = [
-      # NOTE: リソースを作成するリージョンとグローバルサービス（CloudFront、IAM、Route 53、etc...）のためのus-east-1以外のリージョンは全て禁止
-      {
-        "Effect"   = "Deny"
-        "Action"   = "*"
-        "Resource" = "*"
-        "Condition" = {
-          "StringNotEquals" = {
-            "aws:RequestedRegion" = [
-              "ap-northeast-1",
-              "ap-northeast-3",
-              "us-east-1",
-            ]
-          }
-        }
-      },
-      # NOTE: tfstateの参照・更新に必要な権限
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "s3:GetObject",
-          "s3:DeleteObject",
-          "s3:PutObject",
-        ]
-        "Resource" = "arn:aws:s3:::${awscc_s3_bucket.state_store.bucket_name}/*/terraform.tfstate*" # NOTE: ロック取得時に作成するファイル名は`terraform.tfstate.tflock`
-      },
-      # --- cloudformation
-      # NOTE: awsccプロバイダーを使用する場合は必須    
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "cloudformation:CreateResource",
-          "cloudformation:DeleteResource",
-          "cloudformation:GetResource",
-          "cloudformation:GetResourceRequestStatus",
-          "cloudformation:UpdateResource",
-        ]
-        "Resource" = "arn:aws:cloudformation:*:${data.aws_caller_identity.current.account_id}:resource/*"
-      },
-      # --- ec2
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "ec2:Describe*", # plan
-        ]
-        "Resource" = "*"
-      },
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "ec2:CreateTags",
-          "ec2:DeleteTags",
-        ]
-        "Resource" = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:*/*"
-      },
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "ec2:AssociateDhcpOptions",
-          "ec2:CreateDhcpOptions",
-          "ec2:DeleteDhcpOptions",
-        ]
-        "Resource" = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:dhcp-options/*"
-      },
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "ec2:CreateEgressOnlyInternetGateway",
-          "ec2:DeleteEgressOnlyInternetGateway",
-        ]
-        "Resource" = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:egress-only-internet-gateway/*"
-      },
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "ec2:AssociateRouteTable",
-          "ec2:AttachInternetGateway",
-          "ec2:CreateInternetGateway",
-          "ec2:DeleteInternetGateway",
-          "ec2:DisassociateRouteTable",
-          "ec2:DetachInternetGateway",
-          "ec2:ReplaceRouteTableAssociation",
-        ]
-        "Resource" = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:internet-gateway/*"
-      },
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "ec2:AssociateSubnetCidrBlock",
-          "ec2:CreateSubnet",
-        ]
-        "Resource" = "arn:aws:ec2::${data.aws_caller_identity.current.account_id}:ipam-pool/*"
-      },
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "ec2:CreateNetworkAcl",
-          "ec2:CreateNetworkAclEntry",
-          "ec2:DeleteNetworkAcl",
-          "ec2:DeleteNetworkAclEntry",
-          "ec2:ReplaceNetworkAclAssociation",
-          "ec2:ReplaceNetworkAclEntry",
-        ]
-        "Resource" = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:network-acl/*"
-      },
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "ec2:AssociateRouteTable",
-          "ec2:CreateRoute",
-          "ec2:CreateRouteTable",
-          "ec2:DeleteRoute",
-          "ec2:DeleteRouteTable",
-          "ec2:ReplaceRoute",
-          "ec2:DisassociateRouteTable",
-          "ec2:ReplaceRouteTableAssociation",
-          "ec2:CreateVpcEndpoint",
-          "ec2:ModifyVpcEndpoint",
-        ]
-        "Resource" = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:route-table/*"
-      },
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "ec2:CreateVpcEndpoint",
-          "ec2:ModifyVpcEndpoint",
-        ]
-        "Resource" = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:security-group/*"
-      },
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "ec2:AssociateRouteTable",
-          "ec2:AssociateSubnetCidrBlock",
-          "ec2:CreateSubnet",
-          "ec2:CreateVpcEndpoint",
-          "ec2:DeleteSubnet",
-          "ec2:DisassociateRouteTable",
-          "ec2:DisassociateSubnetCidrBlock",
-          "ec2:ModifySubnetAttribute",
-          "ec2:ModifyVpcEndpoint",
-          "ec2:ReplaceNetworkAclAssociation",
-          "ec2:ReplaceRouteTableAssociation",
-        ]
-        "Resource" = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:subnet/*"
-      },
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "ec2:CreateFlowLogs",
-          "ec2:DeleteFlowLogs",
-        ]
-        "Resource" = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:vpc-flow-log/*"
-      },
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "ec2:AssociateDhcpOptions",
-          "ec2:AssociateVpcCidrBlock",
-          "ec2:AttachInternetGateway",
-          "ec2:CreateEgressOnlyInternetGateway",
-          "ec2:CreateFlowLogs",
-          "ec2:CreateNetworkAcl",
-          "ec2:CreateRouteTable",
-          "ec2:CreateSubnet",
-          "ec2:CreateVpc",
-          "ec2:CreateVpcEndpoint",
-          "ec2:DeleteVpc",
-          "ec2:DetachInternetGateway",
-          "ec2:DisassociateVpcCidrBlock",
-          "ec2:ModifyVpcAttribute",
-          "ec2:ModifyVpcTenancy",
-        ]
-        "Resource" = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:vpc/*"
-      },
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "ec2:CreateVpcEndpoint",
-          "ec2:DeleteVpcEndpoints",
-          "ec2:ModifyVpcEndpoint",
-        ]
-        "Resource" = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:vpc-endpoint/*"
-      },
-      # --- elasticache
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "elasticache:AddTagsToResource",
-          "elasticache:RemoveTagsFromResource",
-        ]
-        "Resource" = "arn:aws:elasticache:*:${data.aws_caller_identity.current.account_id}:*:*"
-      },
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "elasticache:CreateCacheSubnetGroup",
-          "elasticache:DeleteCacheSubnetGroup",
-          "elasticache:DescribeCacheSubnetGroups",
-          "elasticache:ListTagsForResource",
-          "elasticache:ModifyCacheSubnetGroup",
-        ]
-        "Resource" = "arn:aws:elasticache:*:${data.aws_caller_identity.current.account_id}:subnetgroup:*"
-      },
-      # --- iam
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "iam:List*",
-          "iam:Tag*",
-          "iam:Untag*",
-        ]
-        "Resource" = "*"
-      },
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "iam:AttachRolePolicy",
-          "iam:CreateRole",
-          "iam:DeleteRole*",
-          "iam:DetachRolePolicy",
-          "iam:GetRole",
-          "iam:PutRole*",
-          "iam:UpdateAssumeRolePolicy",
-          "iam:UpdateRole*",
-        ]
-        "Resource" = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/*"
-      },
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "iam:AddRoleToInstanceProfile",
-          "iam:CreateInstanceProfile",
-          "iam:DeleteInstanceProfile",
-          "iam:GetInstanceProfile",
-          "iam:RemoveRoleFromInstanceProfile",
-        ]
-        "Resource" = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:instance-profile/*"
-      },
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "iam:AddClientIDToOpenIDConnectProvider",
-          "iam:CreateOpenIDConnectProvider",
-          "iam:DeleteOpenIDConnectProvider",
-          "iam:GetOpenIDConnectProvider",
-          "iam:RemoveClientIDFromOpenIDConnectProvider",
-          "iam:UpdateOpenIDConnectProviderThumbprint",
-        ]
-        "Resource" = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/*"
-      },
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "iam:CreatePolicy*",
-          "iam:DeletePolicy*",
-          "iam:GetPolicy*",
-          "iam:SetDefaultPolicyVersion",
-        ]
-        "Resource" = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/*"
-      },
-      # --- logs
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "logs:CreateLogDelivery",
-          "logs:DeleteLogDelivery",
-        ]
-        "Resource" = "*"
-      },
-      # --- rds
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "rds:AddTagsToResource",
-          "rds:ListTagsForResource",
-          "rds:RemoveTagsFromResource",
-        ]
-        "Resource" = "arn:aws:rds:*:${data.aws_caller_identity.current.account_id}:*:*"
-      },
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "rds:CreateDBSubnetGroup",
-          "rds:DeleteDBSubnetGroup",
-          "rds:DescribeDBSubnetGroups",
-          "rds:ModifyDBSubnetGroup",
-        ]
-        "Resource" = "arn:aws:rds:*:${data.aws_caller_identity.current.account_id}:subgrp:*"
-      },
-      # --- s3
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "s3:ListAllMyBuckets",
-        ]
-        "Resource" = "*"
-      },
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "s3:CreateBucket",
-          "s3:DeleteBucket*",
-          "s3:GetBucket*",
-          "s3:Get*Configuration",
-          "s3:ListBucket*",
-          "s3:ListTagsForResource",
-          "s3:PutBucket*",
-          "s3:Put*Configuration",
-          "s3:TagResource",
-          "s3:UntagResource",
-        ]
-        "Resource" = "arn:aws:s3:::*"
-      },
-      # --- vpce
-      {
-        "Effect" = "Allow"
-        "Action" = [
-          "vpce:AllowMultiRegion",
-        ]
-        "Resource" = [
-          "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:vpc-endpoint/*",
-          "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:vpc-endpoint-service/*",
-        ]
-      },
+data "aws_iam_policy_document" "read" {
+  # NOTE: リソースを作成するリージョンとグローバルサービス（CloudFront、IAM、Route 53、etc...）のためのus-east-1以外のリージョンは全て禁止
+  statement {
+    effect    = "Deny"
+    actions   = ["*", ]
+    resources = ["*", ]
+
+    condition {
+      test     = "StringNotEquals"
+      variable = "aws:RequestedRegion"
+      values = [
+        "ap-northeast-1",
+        "ap-northeast-3",
+        "us-east-1",
+      ]
+    }
+  }
+
+  # NOTE: tfstateの参照・更新に必要な権限
+  statement {
+    effect = "Allow"
+    actions = [
+      "s3:GetObject",
+      "s3:DeleteObject",
+      "s3:PutObject",
     ]
-  })
-  roles = [awscc_iam_role.github_actions_apply.role_name, ]
+    resources = ["arn:aws:s3:::${awscc_s3_bucket.state_store.bucket_name}/*/terraform.tfstate*", ] # NOTE: ロック取得時に作成するファイル名は`terraform.tfstate.tflock`
+  }
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "cloudformation:GetResource", # NOTE: awsccプロバイダーを使用する場合に必須
+      "ec2:Describe*",
+      "elasticache:Describe*",
+      "elasticache:List*",
+      "iam:GetInstanceProfile",
+      "iam:GetOpenIDConnectProvider",
+      "iam:GetPolicy*",
+      "iam:GetRole*",
+      "iam:List*Policies",
+      "iam:ListEntitiesForPolicy",
+      "iam:ListInstanceProfiles",
+      "iam:ListOpenIDConnectProviders",
+      "iam:ListPolicyVersions",
+      "iam:ListRoles",
+      "rds:Describe*",
+      "rds:ListTagsForResource",
+      "s3:Get*Configuration",
+      "s3:GetBucket*",
+      "s3:List*",
+    ]
+    resources = ["*", ]
+  }
+
+  lifecycle {
+    postcondition {
+      condition     = length(self.json) <= 6144 # NOTE: マネージドポリシーのサイズは6144文字が上限
+      error_message = ""
+    }
+  }
+}
+
+resource "awscc_iam_managed_policy" "read" {
+  managed_policy_name = "${var.project}-${var.environment}-github-actions-read"
+  policy_document     = data.aws_iam_policy_document.read.json
+  roles = [
+    awscc_iam_role.github_actions_plan.role_name,
+    awscc_iam_role.github_actions_apply.role_name,
+  ]
+}
+
+data "aws_iam_policy_document" "write" {
+  # NOTE: リソースを作成するリージョンとグローバルサービス（CloudFront、IAM、Route 53、etc...）のためのus-east-1以外のリージョンは全て禁止
+  statement {
+    effect    = "Deny"
+    actions   = ["*", ]
+    resources = ["*", ]
+
+    condition {
+      test     = "StringNotEquals"
+      variable = "aws:RequestedRegion"
+      values = [
+        "ap-northeast-1",
+        "ap-northeast-3",
+        "us-east-1",
+      ]
+    }
+  }
+
+  # NOTE: tfstateの参照・更新に必要な権限
+  statement {
+    effect = "Allow"
+    actions = [
+      "s3:GetObject",
+      "s3:DeleteObject",
+      "s3:PutObject",
+    ]
+    resources = ["arn:aws:s3:::${awscc_s3_bucket.state_store.bucket_name}/*/terraform.tfstate*", ] # NOTE: ロック取得時に作成するファイル名は`terraform.tfstate.tflock`
+  }
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "cloudformation:*Resource*",
+      "ec2:*Tags",
+      "ec2:Associate*",
+      "ec2:Attach*",
+      "ec2:AuthorizeSecurityGroup*",
+      "ec2:Create*",
+      "ec2:Delete*",
+      "ec2:Detach*",
+      "ec2:Disassociate*",
+      "ec2:Modify*",
+      "ec2:Replace*",
+      "ec2:RevokeSecurityGroup*",
+      "ec2:UpdateSecurityGroupRuleDescriptions*",
+      "elasticache:AddTagsToResource",
+      "elasticache:Create*",
+      "elasticache:Delete*",
+      "elasticache:Modify*",
+      "elasticache:RemoveTagsFromResource",
+      "iam:*InstanceProfile",
+      "iam:*OpenIDConnectProvider*",
+      "iam:AttachRolePolicy",
+      "iam:CreatePolicy*",
+      "iam:CreateRole",
+      "iam:DeletePolicy*",
+      "iam:DeleteRole*",
+      "iam:DetachRolePolicy",
+      "iam:PutRole*",
+      "iam:UpdateRole*",
+      "iam:Untag*",
+      "iam:Tag*",
+      "logs:CreateLog*",
+      "logs:DeleteLog*",
+      "rds:AddTagsToResource",
+      "rds:CreateDB*",
+      "rds:DeleteDB*",
+      "rds:ModifyDBSubnetGroup",
+      "rds:RemoveTagsFromResource",
+      "s3:*Bucket*",
+      "s3:Put*Configuration",
+      "s3:Update*Configuration",
+      "s3:TagResource",
+      "s3:UntagResource",
+      "vpce:AllowMultiRegion",
+    ]
+    resources = ["*", ]
+  }
+
+  lifecycle {
+    postcondition {
+      condition     = length(self.json) <= 6144 # NOTE: マネージドポリシーのサイズは6144文字が上限
+      error_message = ""
+    }
+  }
+}
+
+resource "awscc_iam_managed_policy" "write" {
+  managed_policy_name = "${var.project}-${var.environment}-github-actions-write"
+  policy_document     = data.aws_iam_policy_document.write.json
+  roles               = [awscc_iam_role.github_actions_apply.role_name, ]
 }
 
 resource "github_repository_environment" "github_actions" {
@@ -583,7 +282,7 @@ resource "github_actions_environment_secret" "plan_role_arn" {
 resource "github_actions_environment_secret" "apply_role_arn" {
   depends_on = [github_repository_environment.github_actions, ]
 
-  environment     = var.environment # -> github_repository_environment.github_actions.environment
+  environment     = var.environment
   plaintext_value = awscc_iam_role.github_actions_apply.arn
   repository      = "learning-terraform"
   secret_name     = upper(replace("${var.project}_APPLY_ROLE_ARN", "-", "_"))
