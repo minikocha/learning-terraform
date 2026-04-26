@@ -45,5 +45,4 @@ inputs = {
     { key = "Project", value = local.all_vars.locals.project },
     { key = "Terragrunt", value = path_relative_to_include("root") },
   ]
-  terragrunt_path = path_relative_to_include("root")
 }
