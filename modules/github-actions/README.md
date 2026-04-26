@@ -80,10 +80,10 @@ https://qiita.com/nakamasato/items/077a72f2f06999d1d3bb
 ## Providers
 
 | Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.37.0 |
-| <a name="provider_awscc"></a> [awscc](#provider\_awscc) | 1.76.0 |
-| <a name="provider_github"></a> [github](#provider\_github) | 6.11.1 |
+| ---- | ------- |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.42.0 |
+| <a name="provider_awscc"></a> [awscc](#provider\_awscc) | 1.81.0 |
+| <a name="provider_github"></a> [github](#provider\_github) | 6.12.0 |
 | <a name="provider_tls"></a> [tls](#provider\_tls) | 4.2.1 |
 
 ## Modules
@@ -93,7 +93,7 @@ No modules.
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
+| ---- | ----------- | ---- | ------- | :------: |
 | <a name="input_environment"></a> [environment](#input\_environment) | n/a | `string` | n/a | yes |
 | <a name="input_log_store_bucket_name"></a> [log\_store\_bucket\_name](#input\_log\_store\_bucket\_name) | n/a | `string` | n/a | yes |
 | <a name="input_project"></a> [project](#input\_project) | n/a | `string` | n/a | yes |
@@ -102,7 +102,7 @@ No modules.
 ## Outputs
 
 | Name | Description |
-|------|-------------|
+| ---- | ----------- |
 | <a name="output_read_policy_size"></a> [read\_policy\_size](#output\_read\_policy\_size) | n/a |
 | <a name="output_state_store_bucket_name"></a> [state\_store\_bucket\_name](#output\_state\_store\_bucket\_name) | n/a |
 | <a name="output_write_policy_size"></a> [write\_policy\_size](#output\_write\_policy\_size) | n/a |
