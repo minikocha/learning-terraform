@@ -12,11 +12,7 @@ generate "provider_aws" {
       region = "${local.region_vars.locals.aws_region}"
 
       default_tags {
-        tags = {
-          Environment = "${local.environment_vars.locals.environment}"
-          Project     = "${local.all_vars.locals.project}"
-          Terragrunt  = "${get_terragrunt_dir()}"
-        }
+        tags = { for tag in var.tags : tag.key => tag.value }
       }
     }
   EOF
