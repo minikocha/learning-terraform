@@ -14,6 +14,10 @@ terraform {
 
 provider "aws" {
   region = "ap-northeast-1"
+
+  default_tags {
+    tags = { for tag in var.tags : tag.key => tag.value }
+  }
 }
 
 provider "awscc" {
