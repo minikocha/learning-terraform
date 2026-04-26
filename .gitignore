@@ -1,12 +1,24 @@
 **/.DS_Store
 
+### Terraform ###
 **/.terraform/*
+
+*.tfstate
+*.tfstate.*
+
+crash.log
+crash.*.log
+
+*.tfvars
+*.tfvars.json
+
+modules/**/.terraform.lock.hcl
+
+### Terragrunt ###
 **/.terragrunt-cache/*
 
 .terraform-plugin-cache/**
 !.terraform-plugin-cache/.gitkeep
 
-modules/**/.terraform.lock.hcl
-terraform/**/.terraform.lock.hcl
-
+### tfcmt ###
 tfwrapper.sh
