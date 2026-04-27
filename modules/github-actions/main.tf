@@ -61,7 +61,7 @@ resource "awscc_iam_role" "github_actions_plan" {
           "StringEquals" = {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
-          "ForAnyValue:StringLike" = {
+          "StringLike" = {
             "token.actions.githubusercontent.com:sub" = "repo:minikocha/learning-terraform:*"
           }
         }
@@ -87,7 +87,7 @@ resource "awscc_iam_role" "github_actions_apply" {
           "StringEquals" = {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
-          "ForAnyValue:StringLike" = {
+          "StringLike" = {
             "token.actions.githubusercontent.com:sub" = "repo:minikocha/learning-terraform:*"
           }
         }
