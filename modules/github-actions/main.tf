@@ -61,7 +61,7 @@ resource "awscc_iam_role" "github_actions_plan" {
           "StringEquals" = {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
-          "ForAnyValue:StringLike" = {
+          "StringLike" = {
             "token.actions.githubusercontent.com:sub" = "repo:minikocha/learning-terraform:*"
           }
         }
@@ -87,7 +87,7 @@ resource "awscc_iam_role" "github_actions_apply" {
           "StringEquals" = {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
-          "ForAnyValue:StringLike" = {
+          "StringLike" = {
             "token.actions.githubusercontent.com:sub" = "repo:minikocha/learning-terraform:*"
           }
         }
@@ -231,6 +231,7 @@ data "aws_iam_policy_document" "write" {
       "iam:DeleteRole*",
       "iam:DetachRolePolicy",
       "iam:PutRole*",
+      "iam:UpdateAssumeRolePolicy",
       "iam:UpdateRole*",
       "iam:Untag*",
       "iam:Tag*",
