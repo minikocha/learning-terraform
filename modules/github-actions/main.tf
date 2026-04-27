@@ -231,6 +231,7 @@ data "aws_iam_policy_document" "write" {
       "iam:DeleteRole*",
       "iam:DetachRolePolicy",
       "iam:PutRole*",
+      "iam:UpdateAssumeRolePolicy",
       "iam:UpdateRole*",
       "iam:Untag*",
       "iam:Tag*",
