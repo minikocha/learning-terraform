@@ -273,17 +273,17 @@ resource "github_repository_environment" "github_actions" {
 resource "github_actions_environment_secret" "plan_role_arn" {
   depends_on = [github_repository_environment.github_actions, ]
 
-  environment     = var.environment
-  plaintext_value = awscc_iam_role.github_actions_plan.arn
-  repository      = "learning-terraform"
-  secret_name     = upper(replace("${var.project}_PLAN_ROLE_ARN", "-", "_"))
+  environment = var.environment
+  repository  = "learning-terraform"
+  secret_name = upper(replace("${var.project}_PLAN_ROLE_ARN", "-", "_"))
+  value       = awscc_iam_role.github_actions_plan.arn
 }
 
 resource "github_actions_environment_secret" "apply_role_arn" {
   depends_on = [github_repository_environment.github_actions, ]
 
-  environment     = var.environment
-  plaintext_value = awscc_iam_role.github_actions_apply.arn
-  repository      = "learning-terraform"
-  secret_name     = upper(replace("${var.project}_APPLY_ROLE_ARN", "-", "_"))
+  environment = var.environment
+  repository  = "learning-terraform"
+  secret_name = upper(replace("${var.project}_APPLY_ROLE_ARN", "-", "_"))
+  value       = awscc_iam_role.github_actions_apply.arn
 }

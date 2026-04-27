@@ -2,17 +2,17 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "6.37.0"
+      version = "6.42.0"
     }
 
     awscc = {
       source  = "hashicorp/awscc"
-      version = "1.76.0"
+      version = "1.81.0"
     }
 
     github = {
       source  = "integrations/github"
-      version = "6.11.1"
+      version = "6.12.0"
     }
 
     tls = {
