@@ -24,14 +24,14 @@ jobs:
           persist-credentials: false
 
       - name: Assume role
-        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 #v5.1.1
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 #v6.1.1
         with:
           role-to-assume: ${{ secrets.LEARNING_PLAN_ROLE_ARN }}
           aws-region: ap-northeast-1
           role-session-name: GitHubActions
 
       - name: Install tools
-        uses: jdx/mise-action@146a28175021df8ca24f8ee1828cc2a60f980bd5 #v3.5.1
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 #v4.0.1
 
       - name: Init all units
         run: terragrunt run -a --no-color -- init -upgrade

@@ -76,7 +76,7 @@ jobs:
 
       - name: Create GitHub App token
         id: create-token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf #v2.2.1
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 #v3.2.0
         with:
           app-id: ${{ secrets.GH_APP_APP_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
@@ -84,7 +84,7 @@ jobs:
           repositories: learning-terraform
 
       - name: Assume role
-        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 #v5.1.1
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 #v6.1.1
         with:
           role-to-assume: ${{ secrets.LEARNING_APPLY_ROLE_ARN }}
           aws-region: ap-northeast-1
@@ -106,7 +106,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download plan files
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 #v7.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c #v8.0.1
         with:
           name: ${{ inputs.PR_NUMBER }}-${{ inputs.DEPLOYMENT_TARGET }}-tfplan
           path: /tmp/artifact
@@ -114,7 +114,7 @@ jobs:
           run-id: ${{ steps.check-run-id.outputs.run_id }}
 
       - name: Install tools
-        uses: jdx/mise-action@146a28175021df8ca24f8ee1828cc2a60f980bd5 #v3.5.1
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 #v4.0.1
 
       - name: Init all units
         run: |
@@ -125,7 +125,7 @@ jobs:
       - name: Install tfcmt
         uses: shmokmt/actions-setup-tfcmt@04d5aa6dc61eaa69a4d00257224c9b97f4857819 #v2.1.1
         with:
-          version: v4.14.13
+          version: v4.14.15
 
       - name: Set tfwrapper.sh
         run: |
