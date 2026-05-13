@@ -1,0 +1,106 @@
+#!/bin/bash
+
+set -u -o pipefail
+
+# NOTE: exportしないとIPv6環境でのawscli実行がタイムアウトする
+export AWS_USE_DUALSTACK_ENDPOINT=true
+
+CLUSTER_NAME="${cluster_name}"
+REGION="${region}"
+
+function get_instance_life_cycle() {
+  local token
+  token="$(curl -fsS -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: 21600" "http://169.254.169.254/latest/api/token")"
+  if [[ -z "$${token}" ]]; then
+    echo "ERROR: failed to get ec2-metadata-token" >&2
+    return 1
+  fi
+
+  local life_cycle
+  life_cycle="$(curl -fsS -H "X-aws-ec2-metadata-token: $${token}" "http://169.254.169.254/latest/meta-data/instance-life-cycle")"
+  if [[ -z "$${life_cycle}" ]]; then
+    echo "ERROR: failed to get instance life-cycle" >&2
+    return 1
+  fi
+
+  echo "$${life_cycle}"
+}
+
+function set_ecs_config() {
+  if [[ -z "$${1}" ]]; then
+    echo "ERROR: missing argument: life-cycle is empty" >&2
+    return 1
+  fi
+
+  # NOTE: heredocはタブでインデントすること
+  cat <<-EOF >/etc/ecs/ecs.config
+	ECS_CLUSTER=$${CLUSTER_NAME}
+	ECS_CONTAINER_STOP_TIMEOUT=90s
+	ECS_ENABLE_CONTAINER_METADATA=true
+	ECS_ENABLE_SPOT_INSTANCE_DRAINING=true
+	ECS_ENABLE_TASK_ENI=true
+	ECS_INSTANCE_ATTRIBUTES={"life-cycle": "$${1}"}
+	ECS_INSTANCE_IP_COMPATIBILITY=ipv6
+	EOF
+  if [[ $? -ne 0 ]]; then
+    echo "ERROR: failed to set /etc/ecs/ecs.config" >&2
+    return 1
+  fi
+}
+
+function set_ssm_config() {
+  # NOTE: heredocはタブでインデントすること
+  cat <<-EOF >/etc/amazon/ssm/amazon-ssm-agent.json
+	{
+	  "Ssm": {
+	    "PluginLocalOutputCleanup": "after-upload",
+	    "OrchestrationDirectoryCleanup": "clean-success"
+	  },
+	  "Agent": {
+	    "Region": "$${REGION}",
+	    "TelemetryMetricsToCloudWatch": false,
+	    "TelemetryMetricsToSSM": true,
+	    "GlobalEnhancedTelemetryEnabled": true,
+	    "AuditExpirationDay" : 7,
+	    "LongRunningWorkerMonitorIntervalSeconds": 60,
+	    "UseDualStackEndpoint": true
+	  },
+	  "Os": {
+	    "Lang": "ja-JP",
+	    "Version": "1"
+	  }
+	}
+	EOF
+  if [[ $? -ne 0 ]]; then
+    echo "ERROR: failed to set /etc/amazon/ssm/amazon-ssm-agent.json" >&2
+    return 1
+  fi
+}
+
+function main() {
+  echo "INFO: init-script start"
+
+  timedatectl set-timezone "Asia/Tokyo"
+
+  local life_cycle
+  life_cycle="$(get_instance_life_cycle)"
+  if [[ -z "$${life_cycle}" ]]; then
+    echo "ERROR: failed to get instance life-cycle" >&2
+    life_cycle="unknown"
+  fi
+
+  if ! set_ecs_config "$${life_cycle}"; then
+    echo "ERROR: failed to configure ecs-agent" >&2
+    shutdown -h now # NOTE: ecs-agentが設定できない場合は起動させる意味がないため停止させる
+  fi
+
+  if ! set_ssm_config; then
+    echo "ERROR: failed to configure ssm-agent" >&2
+  fi
+
+  systemctl restart amazon-ssm-agent
+
+  echo "INFO: init-script end"
+}
+
+main

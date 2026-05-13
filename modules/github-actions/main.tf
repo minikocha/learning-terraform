@@ -1,3 +1,5 @@
+data "aws_caller_identity" "current" {}
+
 data "tls_certificate" "github_actions" {
   url = "https://token.actions.githubusercontent.com"
 }
@@ -132,8 +134,10 @@ data "aws_iam_policy_document" "read" {
   statement {
     effect = "Allow"
     actions = [
+      "autoscaling:Describe*",
       "cloudformation:GetResource", # NOTE: awsccプロバイダーを使用する場合に必須
       "ec2:Describe*",
+      "ecs:Describe*",
       "elasticache:Describe*",
       "elasticache:List*",
       "iam:GetInstanceProfile",
@@ -146,6 +150,7 @@ data "aws_iam_policy_document" "read" {
       "iam:ListOpenIDConnectProviders",
       "iam:ListPolicyVersions",
       "iam:ListRoles",
+      "logs:Describe*",
       "rds:Describe*",
       "rds:ListTagsForResource",
       "s3:Get*Configuration",
@@ -204,6 +209,10 @@ data "aws_iam_policy_document" "write" {
   statement {
     effect = "Allow"
     actions = [
+      "autoscaling:*MetricsCollection",
+      "autoscaling:Create*",
+      "autoscaling:Delete*",
+      "autoscaling:UpdateAutoScalingGroup",
       "cloudformation:*Resource*",
       "ec2:*Tags",
       "ec2:Associate*",
@@ -217,6 +226,13 @@ data "aws_iam_policy_document" "write" {
       "ec2:Replace*",
       "ec2:RevokeSecurityGroup*",
       "ec2:UpdateSecurityGroupRuleDescriptions*",
+      "ecs:*TaskDefinition",
+      "ecs:Create*",
+      "ecs:Delete*",
+      "ecs:PutClusterCapacityProviders",
+      "ecs:TagResource",
+      "ecs:UntagResource",
+      "ecs:UpdateService",
       "elasticache:AddTagsToResource",
       "elasticache:Create*",
       "elasticache:Delete*",
@@ -237,6 +253,7 @@ data "aws_iam_policy_document" "write" {
       "iam:Tag*",
       "logs:CreateLog*",
       "logs:DeleteLog*",
+      "logs:PutRetentionPolicy",
       "rds:AddTagsToResource",
       "rds:CreateDB*",
       "rds:DeleteDB*",
@@ -250,6 +267,24 @@ data "aws_iam_policy_document" "write" {
       "vpce:AllowMultiRegion",
     ]
     resources = ["*", ]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["iam:PassRole", ]
+    resources = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.project}-${var.environment}-*", ]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["ec2:RunInstances", ]
+    resources = ["*", ]
+
+    condition {
+      test     = "ArnLike"
+      variable = "ec2:LaunchTemplate"
+      values   = ["arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:launch-template/*", ]
+    }
   }
 
   lifecycle {

@@ -27,6 +27,7 @@ dependency "log-store" {
   mock_outputs = {
     bucket_name = "dummy"
   }
+  mock_outputs_allowed_terraform_commands = ["plan", "validate", ]
 }
 
 inputs = {
