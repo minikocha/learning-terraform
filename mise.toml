@@ -1,6 +1,6 @@
 [tools]
 sops = "3.12.2"
-terraform = "1.14.9"
-terraform-docs = "0.22.0"
-terragrunt = "1.0.2"
+terraform = "1.15.3"
+terraform-docs = "0.24.0"
+terragrunt = "1.0.4"
 tflint = "0.62.0"
