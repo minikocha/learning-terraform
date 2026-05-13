@@ -23,6 +23,6 @@ repos:
       - id: terraform_validate
         files: ^modules/.*/.*\.tf$
       - id: terragrunt_fmt
-        files: ^(overrides|units)/.*/terragrunt\.hcl$
+        files: ^(root\.hcl|(overrides|units)/.+\.hcl)$
       - id: terragrunt_validate
-        files: ^(overrides|units)/.*/terragrunt\.hcl$
+        files: ^units/.*/terragrunt\.hcl$
