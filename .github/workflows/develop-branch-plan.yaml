@@ -11,6 +11,7 @@ on:
       - ".github/workflows/terragrunt-plan.yaml"
       - "modules/**"
       - "units/**"
+      - "mise.toml"
 
 jobs:
   pre-check:
