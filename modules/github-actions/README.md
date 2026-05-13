@@ -81,10 +81,10 @@ https://qiita.com/nakamasato/items/077a72f2f06999d1d3bb
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.42.0 |
-| <a name="provider_awscc"></a> [awscc](#provider\_awscc) | 1.81.0 |
-| <a name="provider_github"></a> [github](#provider\_github) | 6.12.0 |
-| <a name="provider_tls"></a> [tls](#provider\_tls) | 4.2.1 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.44.0 |
+| <a name="provider_awscc"></a> [awscc](#provider\_awscc) | 1.83.0 |
+| <a name="provider_github"></a> [github](#provider\_github) | 6.12.1 |
+| <a name="provider_tls"></a> [tls](#provider\_tls) | 4.3.0 |
 
 ## Modules
 
