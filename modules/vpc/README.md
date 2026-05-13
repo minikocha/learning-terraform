@@ -7,8 +7,8 @@ VPCと関連するリソースを作成する。
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.42.0 |
-| <a name="provider_awscc"></a> [awscc](#provider\_awscc) | 1.81.0 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.44.0 |
+| <a name="provider_awscc"></a> [awscc](#provider\_awscc) | 1.83.0 |
 
 ## Modules
 
