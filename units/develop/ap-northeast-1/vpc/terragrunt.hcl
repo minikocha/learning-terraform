@@ -28,6 +28,7 @@ dependency "log-store" {
   mock_outputs = {
     arn = "arn:aws:s3:::dummy-bucket"
   }
+  mock_outputs_allowed_terraform_commands = ["plan", "validate", ]
 }
 
 dependency "github-actions" {
