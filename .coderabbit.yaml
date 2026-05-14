@@ -1,0 +1,16 @@
+language: "ja-JP"
+early_access: true
+reviews:
+  sequence_diagrams: false
+  estimate_code_review_effort: false
+  suggested_labels: false
+  suggested_reviewers: false
+  in_progress_fortune: false
+  poem: false
+  tools:
+    languagetool:
+      enabled: true
+    checkov:
+      enabled: true
+    actionlint:
+      enabled: true

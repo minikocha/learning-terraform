@@ -1,0 +1,16 @@
+branch: develop
+compact: true
+directory:
+  - modules
+framework:
+  - all
+output: cli
+quiet: true
+repo-id: minikocha/learning-terraform
+# NOTE: severityによるフィルタリングはAPIキーがないと使えない
+skip-check:
+  - CKV_AWS_109 # LOW
+  - CKV_AWS_111 # LOW
+  - CKV_AWS_231 # LOW
+  - CKV_AWS_352 # セキュリティグループで制限するため
+soft-fail: true
