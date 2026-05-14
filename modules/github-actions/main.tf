@@ -1,9 +1,5 @@
 data "aws_caller_identity" "current" {}
 
-data "tls_certificate" "github_actions" {
-  url = "https://token.actions.githubusercontent.com"
-}
-
 resource "awscc_s3_bucket" "state_store" {
   bucket_encryption = {
     server_side_encryption_configuration = [
@@ -41,65 +37,6 @@ resource "awscc_s3_bucket" "state_store" {
     ignore_changes  = [tags, ] # NOTE: タグの順番で差分を検知するため無視させる
     prevent_destroy = true
   }
-}
-
-resource "awscc_iam_oidc_provider" "github_actions" {
-  client_id_list  = ["sts.amazonaws.com", ]
-  tags            = var.tags
-  thumbprint_list = [data.tls_certificate.github_actions.certificates[0].sha1_fingerprint, ]
-  url             = data.tls_certificate.github_actions.url
-}
-
-resource "awscc_iam_role" "github_actions_plan" {
-  assume_role_policy_document = jsonencode({
-    "Statement" = [
-      {
-        "Effect" = "Allow"
-        "Principal" = {
-          "Federated" = awscc_iam_oidc_provider.github_actions.arn
-        }
-        "Action" = "sts:AssumeRoleWithWebIdentity"
-        "Condition" = {
-          "StringEquals" = {
-            "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-          }
-          "StringLike" = {
-            "token.actions.githubusercontent.com:sub" = "repo:minikocha/learning-terraform:*"
-          }
-        }
-      },
-    ]
-    "Version" = "2012-10-17"
-  })
-  permissions_boundary = "arn:aws:iam::308307205114:policy/security-boundary-policy"
-  role_name            = "${var.project}-${var.environment}-github-actions-plan"
-  tags                 = var.tags
-}
-
-resource "awscc_iam_role" "github_actions_apply" {
-  assume_role_policy_document = jsonencode({
-    "Statement" = [
-      {
-        "Effect" = "Allow"
-        "Principal" = {
-          "Federated" = awscc_iam_oidc_provider.github_actions.arn
-        }
-        "Action" = "sts:AssumeRoleWithWebIdentity"
-        "Condition" = {
-          "StringEquals" = {
-            "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-          }
-          "StringLike" = {
-            "token.actions.githubusercontent.com:sub" = "repo:minikocha/learning-terraform:*"
-          }
-        }
-      },
-    ]
-    "Version" = "2012-10-17"
-  })
-  permissions_boundary = "arn:aws:iam::308307205114:policy/security-boundary-policy"
-  role_name            = "${var.project}-${var.environment}-github-actions-apply"
-  tags                 = var.tags
 }
 
 data "aws_iam_policy_document" "read" {
@@ -168,13 +105,9 @@ data "aws_iam_policy_document" "read" {
   }
 }
 
-resource "awscc_iam_managed_policy" "read" {
-  managed_policy_name = "${var.project}-${var.environment}-github-actions-read"
-  policy_document     = data.aws_iam_policy_document.read.json
-  roles = [
-    awscc_iam_role.github_actions_plan.role_name,
-    awscc_iam_role.github_actions_apply.role_name,
-  ]
+resource "aws_iam_policy" "read" {
+  name   = "${var.project}-${var.environment}-github-actions-read"
+  policy = data.aws_iam_policy_document.read.json
 }
 
 data "aws_iam_policy_document" "write" {
@@ -295,10 +228,74 @@ data "aws_iam_policy_document" "write" {
   }
 }
 
-resource "awscc_iam_managed_policy" "write" {
-  managed_policy_name = "${var.project}-${var.environment}-github-actions-write"
-  policy_document     = data.aws_iam_policy_document.write.json
-  roles               = [awscc_iam_role.github_actions_apply.role_name, ]
+resource "aws_iam_policy" "write" {
+  name   = "${var.project}-${var.environment}-github-actions-write"
+  policy = data.aws_iam_policy_document.write.json
+}
+
+data "tls_certificate" "github_actions" {
+  url = "https://token.actions.githubusercontent.com"
+}
+
+resource "awscc_iam_oidc_provider" "github_actions" {
+  client_id_list  = ["sts.amazonaws.com", ]
+  tags            = var.tags
+  thumbprint_list = [data.tls_certificate.github_actions.certificates[0].sha1_fingerprint, ]
+  url             = data.tls_certificate.github_actions.url
+}
+
+resource "awscc_iam_role" "github_actions_plan" {
+  assume_role_policy_document = jsonencode({
+    "Statement" = [
+      {
+        "Effect" = "Allow"
+        "Principal" = {
+          "Federated" = awscc_iam_oidc_provider.github_actions.arn
+        }
+        "Action" = "sts:AssumeRoleWithWebIdentity"
+        "Condition" = {
+          "StringEquals" = {
+            "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+          }
+          "StringLike" = {
+            "token.actions.githubusercontent.com:sub" = "repo:minikocha/learning-terraform:*"
+          }
+        }
+      },
+    ]
+    "Version" = "2012-10-17"
+  })
+  managed_policy_arns  = [aws_iam_policy.read.arn, ]
+  permissions_boundary = "arn:aws:iam::308307205114:policy/security-boundary-policy"
+  role_name            = "${var.project}-${var.environment}-github-actions-plan"
+  tags                 = var.tags
+}
+
+resource "awscc_iam_role" "github_actions_apply" {
+  assume_role_policy_document = jsonencode({
+    "Statement" = [
+      {
+        "Effect" = "Allow"
+        "Principal" = {
+          "Federated" = awscc_iam_oidc_provider.github_actions.arn
+        }
+        "Action" = "sts:AssumeRoleWithWebIdentity"
+        "Condition" = {
+          "StringEquals" = {
+            "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+          }
+          "StringLike" = {
+            "token.actions.githubusercontent.com:sub" = "repo:minikocha/learning-terraform:*"
+          }
+        }
+      },
+    ]
+    "Version" = "2012-10-17"
+  })
+  managed_policy_arns  = [aws_iam_policy.read.arn, aws_iam_policy.write.arn, ]
+  permissions_boundary = "arn:aws:iam::308307205114:policy/security-boundary-policy"
+  role_name            = "${var.project}-${var.environment}-github-actions-apply"
+  tags                 = var.tags
 }
 
 resource "github_repository_environment" "github_actions" {
