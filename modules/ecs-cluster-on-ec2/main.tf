@@ -15,6 +15,10 @@ resource "awscc_ecs_cluster" "this" {
   #  }
   #}
   tags = var.tags
+
+  lifecycle {
+    ignore_changes = [tags, ] # NOTE: タグの順番で差分を検知するため無視させる
+  }
 }
 
 resource "awscc_iam_role" "this" {

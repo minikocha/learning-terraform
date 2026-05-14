@@ -51,6 +51,10 @@ resource "awscc_ec2_flow_log" "this" {
   resource_type        = "VPC"
   tags                 = var.tags
   traffic_type         = "ALL"
+
+  lifecycle {
+    ignore_changes = [tags, ] # NOTE: タグの順番で差分を検知するため無視させる
+  }
 }
 
 # IPアドレス設計IPv4)
